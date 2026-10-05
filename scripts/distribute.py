@@ -91,7 +91,7 @@ def main():
             f.write(key_text.strip() + "\n")
         key.chmod(0o600)
         del key_text
-        run(["openssl", "pkey", "-in", key, "-check", "-noout", "-passin", "stdin"], capture=True)
+        run(["openssl", "pkey", "-in", key, "-check", "-noout", "-passin", "pass:"], capture=True)
         auth = ["-allowProvisioningUpdates", "-authenticationKeyPath", key,
                 "-authenticationKeyID", key_id, "-authenticationKeyIssuerID", issuer]
         archive, exported = work / "Rhythm.xcarchive", work / "export"
