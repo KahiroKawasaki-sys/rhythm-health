@@ -63,7 +63,7 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 ## 署名・TestFlight準備（2026-10-05）
 - App Store Connectの初回利用規約は本人の明示承認後に同意済み。
 - 署名前の実機向けRelease Archive検証を追加。Prepare unsigned iOS releaseを手動実行する。成果物はGitHub内で1日保持し、IPAとは区別する。
-- 署名用キーや証明書の作成・外部保管、およびTestFlightアップロードは未実施。秘密情報はチャットやGitに貼らない。
+- APIキーの発行状況は下記を参照。署名用証明書の作成・秘密情報の外部保管、およびTestFlightアップロードは未実施。秘密情報はチャットやGitに貼らない。
 
 - Release Archive検証：7cff7e5で成功。本体と拡張のBundle ID、バージョン一致、iphoneosプラットフォーム、実行ファイルを確認。
 - 結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37311729232
@@ -72,4 +72,4 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 
 - App Store Connectに「Rhythm - 日々のリズム」を登録済み。iOS、日本語、Bundle ID com.kawakahi.rhythm、SKU rhythm-health-ios。
 - 管理画面: https://appstoreconnect.apple.com/apps/6819279929/distribution
-- TestFlightはビルド未アップロード。App Store Connect APIは本人の明示承認後、内部開発・テスト用途に限定する追加条件へ同意して申請を提出。2026-10-05に管理画面で利用承認を確認（有効なキー0件）。キー未作成、証明書未作成、秘密情報の外部保存なし。
+- TestFlightはビルド未アップロード。App Store Connect APIは本人の明示承認後、内部開発・テスト用途に限定する追加条件へ同意して申請を提出。2026-10-05に管理画面で利用承認を確認。その後、本人が管理者権限の範囲を確認して明示承認し、チームキー「Rhythm GitHub TestFlight」を生成。キー名の表示と有効なキー1件を確認。秘密鍵のダウンロード・GitHubへの保管、証明書の作成は未実施。次は保管先を確定して、署名・TestFlight用の設定へ進む。
