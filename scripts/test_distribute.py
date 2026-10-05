@@ -74,7 +74,7 @@ class DistributionChecks(unittest.TestCase):
 
 class KeyTextChecks(unittest.TestCase):
     # Synthetic format fixtures only; these are not cryptographic keys.
-    SAMPLE = "-----BEGIN PRIVATE KEY-----\nnot-a-real-key\n-----END PRIVATE KEY-----\n"
+    SAMPLE = "-----BEGIN PRIVATE KEY-----\nMAMCAQE=\n-----END PRIVATE KEY-----\n"
 
     def test_plain_text(self):
         self.assertEqual(normalize_private_key(self.SAMPLE), self.SAMPLE)
@@ -87,7 +87,13 @@ class KeyTextChecks(unittest.TestCase):
         with self.assertRaises(ValueError) as caught:
             normalize_private_key(sentinel)
         self.assertNotIn(sentinel, str(caught.exception))
-        self.assertIn("begin_marker=False", str(caught.exception))
+        self.assertIn("No contents logged", str(caught.exception))
+
+    def test_base64_only_gets_pem_wrapper(self):
+        self.assertEqual(normalize_private_key("MAMC\nAQE="), self.SAMPLE)
+
+    def test_random_base64_is_not_key_data(self):
+        with self.assertRaises(ValueError): normalize_private_key("aGVsbG8=")
 
     def test_rejects_path_and_incomplete_text(self):
         for value in ("C:/Downloads/AuthKey_example.p8", "AuthKey_example.p8", "-----BEGIN PRIVATE KEY-----", ""):

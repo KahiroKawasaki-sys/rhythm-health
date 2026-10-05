@@ -1,4 +1,6 @@
 """Run only on a disposable GitHub-hosted Mac after owner approval."""
+import base64
+import binascii
 import datetime as dt
 import os
 from pathlib import Path
@@ -7,6 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
+import textwrap
 
 BUNDLES = {"Rhythm.app": "com.kawakahi.rhythm",
            "Rhythm.app/PlugIns/RhythmScreenTime.appex": "com.kawakahi.rhythm.ScreenTimeReport"}
@@ -18,19 +21,21 @@ def require(condition, message):
 
 
 def normalize_private_key(text):
-    # Ignore a UTF-8 BOM introduced by an editor, but never guess missing key material.
+    # Reconstruct only transport formatting; OpenSSL validates the actual private key before Apple access.
     text = text.strip().lstrip("\ufeff").strip().replace("\r\n", "\n")
-    lines = text.splitlines()
-    require(len(lines) >= 3 and lines[0] == "-----BEGIN PRIVATE KEY-----" and
-            lines[-1] == "-----END PRIVATE KEY-----",
-            "ASC_PRIVATE_KEY format check failed (no key contents logged): "
-            f"begin_marker={'-----BEGIN PRIVATE KEY-----' in text}, "
-            f"end_marker={'-----END PRIVATE KEY-----' in text}, "
-            f"multiline={len(lines) >= 3}, "
-            f"literal_newlines={chr(92) + 'n' in text}, "
-            f"ec_header={'-----BEGIN EC PRIVATE KEY-----' in text}, "
-            f"filename_only={len(lines) == 1 and text.endswith('.p8')}")
-    return text + "\n"
+    begin, end = "-----BEGIN PRIVATE KEY-----", "-----END PRIVATE KEY-----"
+    if text.startswith(begin) and text.endswith(end):
+        body = text[len(begin):-len(end)]
+    else:
+        body = text
+    compact = "".join(body.split())
+    try:
+        der = base64.b64decode(compact, validate=True)
+    except (binascii.Error, ValueError):
+        raise ValueError("ASC_PRIVATE_KEY is neither a PEM private key nor a base64 key body. "
+                         "No contents logged. Copy the downloaded .p8 file text, not setup instructions.") from None
+    require(der.startswith(b"\x30") and len(der) > 2, "ASC_PRIVATE_KEY is not DER key data; no contents logged.")
+    return begin + "\n" + textwrap.fill(compact, 64) + "\n" + end + "\n"
 
 
 def check_distribution(info, signed, profile, bundle, team, build, now):
@@ -56,7 +61,7 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
 
 def run(args, *, cwd=None, capture=False):
     return subprocess.run([str(x) for x in args], cwd=cwd, check=True,
-                          stdout=subprocess.PIPE if capture else None)
+                          stdout=subprocess.PIPE if capture else None, stdin=subprocess.DEVNULL)
 
 
 def main():
@@ -86,6 +91,7 @@ def main():
             f.write(key_text.strip() + "\n")
         key.chmod(0o600)
         del key_text
+        run(["openssl", "pkey", "-in", key, "-check", "-noout", "-passin", "stdin"], capture=True)
         auth = ["-allowProvisioningUpdates", "-authenticationKeyPath", key,
                 "-authenticationKeyID", key_id, "-authenticationKeyIssuerID", issuer]
         archive, exported = work / "Rhythm.xcarchive", work / "export"
