@@ -57,6 +57,8 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
         require(ent.get("get-task-allow") is not True, "Debugging entitlement present")
         require(ent.get("com.apple.developer.family-controls") is True, "Family Controls missing")
     if bundle == "com.kawakahi.rhythm":
+        for purpose in ("NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"):
+            require(bool(info.get(purpose, "").strip()), "HealthKit purpose string missing")
         for ent in (signed, allowed):
             require(ent.get("com.apple.developer.healthkit") is True, "HealthKit missing")
         require(signed.get("com.apple.developer.default-data-protection") == "NSFileProtectionComplete",

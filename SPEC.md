@@ -50,3 +50,7 @@ GitHub上のArchive作成時に開発用署名を行うと登録済みiPhoneが�
 
 ## スクリーンタイム表示拡張の配布形式
 DeviceActivityReportExtensionはExtensionKit形式でビルドし、アプリ内Extensionsへ埋め込む。Info.plistはEXAppExtensionAttributes/EXExtensionPointIdentifierを使う。旧NSExtension形式やPlugInsへの格納は使わない。署名後の検査でこの形式も確認する。
+
+
+## HealthKit利用説明
+Appleの配布検証では書き込みAPIを呼ばないアプリにもNSHealthUpdateUsageDescriptionが要求される場合がある。読み取り用の説明に加え、このキーにも利用目的と現行版が読み取り専用であることを明記する。HealthKitへの書き込み権限は要求しない。
