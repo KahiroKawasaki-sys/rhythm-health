@@ -1,0 +1,33 @@
+name: Sign and prepare TestFlight
+on:
+  workflow_dispatch:
+    inputs:
+      upload:
+        description: Upload verified IPA to Apple (requires owner approval)
+        type: boolean
+        required: true
+        default: false
+permissions:
+  contents: read
+concurrency:
+  group: rhythm-testflight
+  cancel-in-progress: false
+jobs:
+  distribution:
+    if: github.ref == 'refs/heads/main'
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - name: Check distribution validation logic
+        run: python3 -m unittest discover -s scripts -p 'test_*.py'
+      - name: Build, sign and verify; optionally upload
+        env:
+          ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          RHYTHM_UPLOAD: ${{ inputs.upload }}
+        run: python3 scripts/distribute.py

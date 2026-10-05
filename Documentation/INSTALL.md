@@ -73,3 +73,22 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 - App Store Connectに「Rhythm - 日々のリズム」を登録済み。iOS、日本語、Bundle ID com.kawakahi.rhythm、SKU rhythm-health-ios。
 - 管理画面: https://appstoreconnect.apple.com/apps/6819279929/distribution
 - TestFlightはビルド未アップロード。App Store Connect APIは本人の明示承認後、内部開発・テスト用途に限定する追加条件へ同意して申請を提出。2026-10-05に管理画面で利用承認を確認。その後、本人が管理者権限の範囲を確認して明示承認し、チームキー「Rhythm GitHub TestFlight」を生成。キー名の表示と有効なキー1件を確認。秘密鍵のダウンロード・GitHubへの保管、証明書の作成は未実施。次は保管先を確定して、署名・TestFlight用の設定へ進む。
+
+
+## GitHub署名設定（準備済み・未実行）
+`Sign and prepare TestFlight` は main ブランチから手動実行する。upload=false は署名と検査まで、upload=true は検査後にAppleへ送信する。外部保管とApple側の証明書・プロファイル作成、初回送信は本人の明示承認後に行う。App Store一般公開や第三者招待はこの処理に含まれない。
+
+保存先は `KahiroKawasaki-sys/rhythm-health` の Settings → Secrets and variables → Actions → Repository secrets。
+- `ASC_PRIVATE_KEY`: 発行した「Rhythm GitHub TestFlight」の秘密鍵（.p8）の全文。本人がGitHub画面へ直接入力する。チャット・Git・OneDriveに貼らず、エージェントは秘密鍵ファイルを読まない。
+- `ASC_KEY_ID`: 同じキーのKey ID。
+- `ASC_ISSUER_ID`: Apple APIチームキー画面のIssuer ID。
+- `APPLE_TEAM_ID`: Apple DeveloperのMembership detailsで表示されるTeam ID。Issuer IDとは別。
+
+キーはAppleアカウント全体への管理者権限を持つ。Repository secretsは、このリポジトリで実行されるワークフローから使用できるため、書き込み権限者による変更の影響を受ける。秘密鍵をソースに保存しない。実行中だけ一時ファイルに展開し、正常終了・処理エラー時に削除する。強制終了時もGitHubホストの一時実行環境とともに破棄される。署名済みIPA・証明書・ログのアーティファクト保存はしない。
+
+Xcodeの自動署名は開発用証明書、配布用クラウド証明書、両App IDのプロファイルを作成・更新する可能性がある。一時実行環境では開発用証明書が増える場合がある。上限エラー時は繰り返し実行せず、今回作成された証明書を特定してから対処する。既存証明書を自動失効しない。
+
+承認とSecrets設定後、無料枠・課金停止条件を確認し、初回は署名検査を通す。実行エラーは解決してから先へ進める。Appleへの送信が成功しても、TestFlight画面で処理完了を確認するまでは利用可能とは扱わない。実機テストは上記の必須項目を実施する。
+
+実装の参照: https://developer.apple.com/videos/play/wwdc2021/10204/
+アップロード手順: https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds
