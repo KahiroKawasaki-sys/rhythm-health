@@ -98,9 +98,26 @@ def main():
         print("Building and signing Rhythm and its report extension.", flush=True)
         run(["xcodebuild", "-quiet", "-project", root / "Rhythm.xcodeproj", "-scheme", "Rhythm",
              "-configuration", "Release", "-destination", "generic/platform=iOS",
-             "-archivePath", archive, "-derivedDataPath", work / "DerivedData", *auth,
+             "-archivePath", archive, "-derivedDataPath", work / "DerivedData",
              f"DEVELOPMENT_TEAM={team}", f"CURRENT_PROJECT_VERSION={build}",
-             "CODE_SIGN_STYLE=Automatic", "archive"], cwd=root)
+             "CODE_SIGNING_ALLOWED=NO", "archive"], cwd=root)
+        # Carry declared capabilities into export without development profiles/device registration.
+        # This ad-hoc intermediate is never distributed; exported Apple signatures are checked below.
+        for relative, source in (("Rhythm.app/PlugIns/RhythmScreenTime.appex", "ScreenTimeReport/ScreenTimeReport.entitlements"),
+                                 ("Rhythm.app", "Rhythm/Rhythm.entitlements")):
+            app = archive / "Products/Applications" / relative
+            entitlements = plistlib.loads((root / source).read_bytes())
+            entitlements.update({"application-identifier": f"{team}.{BUNDLES[relative]}",
+                                 "com.apple.developer.team-identifier": team, "get-task-allow": False})
+            entitlements_path = work / (app.name + ".entitlements")
+            with entitlements_path.open("wb") as f:
+                plistlib.dump(entitlements, f)
+            run(["codesign", "--force", "--sign", "-", "--entitlements", entitlements_path, app])
+        archive_info_path = archive / "Info.plist"
+        archive_info = plistlib.loads(archive_info_path.read_bytes())
+        archive_info["ApplicationProperties"].update({"Team": team, "SigningIdentity": "-"})
+        with archive_info_path.open("wb") as f:
+            plistlib.dump(archive_info, f)
         options = work / "ExportOptions.plist"
         with options.open("wb") as f:
             plistlib.dump({"method": "app-store-connect", "destination": "export", "teamID": team,
