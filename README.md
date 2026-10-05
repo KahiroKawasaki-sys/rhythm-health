@@ -40,7 +40,7 @@ swift test
 bash scripts/verify-mac.sh
 ```
 
-GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-ios.yml` にあります。**リポジトリへのアップロードやワークフロー実行は行っていません。**外部へアップロードする場合は、利用者の明示承認とプライベートリポジトリを使用してください。
+GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-ios.yml` にあります。2026-10-05に本人の承認で非公開リポジトリへ保存済み。実行結果はGitHub Actionsを参照。無料枠と課金停止条件を確認してから手動実行します。
 
 ## Appleの仕様（確認：2026-10-04）
 - [HealthKitの認可](https://developer.apple.com/documentation/healthkit/authorizing-access-to-health-data)

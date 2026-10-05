@@ -32,5 +32,5 @@ WindowsではXcode/iOS SDKがない。ネイティブビルド、署名、実機
 ## Apple登録（2026-10-05）
 - 本人の明示承認後、App IDを2件登録済み。本体 `com.kawakahi.rhythm`、表示拡張 `com.kawakahi.rhythm.ScreenTimeReport`。
 - 本体：HealthKit、Family Controls (Development)、Data Protection / Complete Protection。表示拡張：Family Controls (Development)。
-- 配布用Family Controls申請は2026-10-05に本人の同意後に送信済み・Apple審査待ち。証明書、署名、クラウドMacへの転送、ビルド、TestFlightは未実行。申請受付と権限付与は区別する。
+- 配布用Family Controls申請は2026-10-05に本人の同意後に送信済み・Apple審査待ち。本人の承認で非公開GitHubへのソース保存を完了。証明書、署名、TestFlightは未実行。申請受付と権限付与は区別する。
 - Team IDはソースに埋め込まず、ビルド環境で本人のチームを指定する。

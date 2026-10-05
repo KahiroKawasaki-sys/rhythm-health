@@ -1,4 +1,5 @@
 import DeviceActivity
+import SwiftUI
 
 extension DeviceActivityReport.Context {
     static let rhythmToday = Self("rhythm.today")

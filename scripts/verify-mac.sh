@@ -8,7 +8,7 @@ fi
 xcodebuild -version
 swift test
 RHYTHM_BUILD_DIR="$(mktemp -d "${TMPDIR:-/tmp}/rhythm-build.XXXXXX")"
-xcodebuild -project Rhythm.xcodeproj -scheme Rhythm -configuration Debug \
+xcodebuild -quiet -project Rhythm.xcodeproj -scheme Rhythm -configuration Debug \
   -sdk iphonesimulator -destination 'generic/platform=iOS Simulator' \
   -derivedDataPath "$RHYTHM_BUILD_DIR" CODE_SIGNING_ALLOWED=NO build
 echo "Build files: $RHYTHM_BUILD_DIR"
