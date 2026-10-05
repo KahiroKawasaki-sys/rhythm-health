@@ -23,7 +23,13 @@ def normalize_private_key(text):
     lines = text.splitlines()
     require(len(lines) >= 3 and lines[0] == "-----BEGIN PRIVATE KEY-----" and
             lines[-1] == "-----END PRIVATE KEY-----",
-            "ASC_PRIVATE_KEY must contain the entire .p8 text, including BEGIN/END lines; not its filename or path.")
+            "ASC_PRIVATE_KEY format check failed (no key contents logged): "
+            f"begin_marker={'-----BEGIN PRIVATE KEY-----' in text}, "
+            f"end_marker={'-----END PRIVATE KEY-----' in text}, "
+            f"multiline={len(lines) >= 3}, "
+            f"literal_newlines={chr(92) + 'n' in text}, "
+            f"ec_header={'-----BEGIN EC PRIVATE KEY-----' in text}, "
+            f"filename_only={len(lines) == 1 and text.endswith('.p8')}")
     return text + "\n"
 
 

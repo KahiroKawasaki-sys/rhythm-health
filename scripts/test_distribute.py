@@ -82,6 +82,13 @@ class KeyTextChecks(unittest.TestCase):
     def test_windows_bom_and_line_endings(self):
         self.assertEqual(normalize_private_key("\ufeff" + self.SAMPLE.replace("\n", "\r\n")), self.SAMPLE)
 
+    def test_format_error_does_not_reveal_value(self):
+        sentinel = "PRIVATE_VALUE_MUST_NEVER_APPEAR"
+        with self.assertRaises(ValueError) as caught:
+            normalize_private_key(sentinel)
+        self.assertNotIn(sentinel, str(caught.exception))
+        self.assertIn("begin_marker=False", str(caught.exception))
+
     def test_rejects_path_and_incomplete_text(self):
         for value in ("C:/Downloads/AuthKey_example.p8", "AuthKey_example.p8", "-----BEGIN PRIVATE KEY-----", ""):
             with self.assertRaises(ValueError): normalize_private_key(value)
