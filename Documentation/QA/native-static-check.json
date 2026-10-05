@@ -1,0 +1,8 @@
+{
+  "swift_files": 14,
+  "syntax_errors": [],
+  "xcode_objects": 74,
+  "missing_references": [],
+  "xml_and_entitlements": "pass",
+  "native_compile": "not run: Xcode/iOS SDK unavailable on Windows"
+}

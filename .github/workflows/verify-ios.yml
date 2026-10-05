@@ -1,0 +1,13 @@
+name: Verify iOS source
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  verify:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unit tests and unsigned simulator build
+        run: bash scripts/verify-mac.sh
