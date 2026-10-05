@@ -2,11 +2,9 @@
 
 体重・睡眠・スクリーンタイムを振り返る、個人向けiPhoneアプリ。iOS 17以上、SwiftUI製。
 
-**2026-10-04時点：ソース実装・Windows上の構文/設定確認・HTML画面設計確認まで。iOSビルド、署名、Appleとの接続、実機での動作は未検証。インストール用IPAは未作成です。**
+**2026-10-06：バージョン1.0・ビルド1.8.1（a98508c）のiPhone向けビルド、Apple配布署名、本体・拡張の権限検査、Apple検証・アップロードが成功。TestFlightで「テスト中」を確認し、本人のみの内部グループへ配布済み。本人のテスター状態は「招待済み」。iPhone実機での表示・データ取得は未検証。**
 
-2026-10-05追記：Apple Developerの有効化と、本体・スクリーンタイム表示拡張のApp ID登録（開発用権限）を完了。Xcode設定を登録IDに更新。配布用Family Controls権限はApple承認済み。本体・拡張のDistribution設定も保存確認済み。Xcode 26.6のクラウドMacで10テスト全件合格、本体と拡張の署名なしSimulatorビルド成功。検証したコードは5854201。署名・Simulator起動/描画・実機検証・配布は未実施。
-
-検証結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37289618379
+配布処理の結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37332782412
 
 ## 入っている機能
 1. 今日：その日の体重・睡眠・自動スクリーンタイム。
@@ -50,9 +48,7 @@ GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-
 - [スクリーンタイム専用レポートとデータ保護](https://developer.apple.com/documentation/deviceactivity/deviceactivityreport)
 - [Family Controls配布権限の申請](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement)
 
-## 配布準備の更新（2026-10-05）
-本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。App Store Connect APIは本人の同意後に利用申請を提出し、2026-10-05に承認を確認。本人の明示承認後、管理者キー「Rhythm GitHub TestFlight」を作成し、有効なキー1件を確認。秘密鍵を本人のDownloadsへダウンロード済み（内容未読）。GitHubに4項目を登録済み。初回実行で秘密鍵の形式確認に失敗したため、ASC_PRIVATE_KEYの全文を本人に再入力依頼中。詳細はDocumentation/INSTALL.md。
+## 配布運用
+Apple Developer、HealthKit、Family Controls配布権限、App Store Connect、本人用内部テストグループを設定済み。秘密情報は本人の承認で非公開リポジトリのGitHub Actions Secretsへ保管し、ソースには含めない。
 
-
-## 手動署名ワークフロー（準備済み）
-`Sign and prepare TestFlight` を追加。通常のpushでは動作しない。既定は署名検査のみ、明示選択時だけAppleへアップロードする。署名権限の不足、チーム違い、期限切れ、開発用プロファイルを検出する9テストと秘密鍵の文字形式に関する3テストはWindowsで合格。Python構文・YAML・両Info.plistのビルド番号設定を確認済み。本人はGitHub保管・証明書作成・無料枠内での本人向けTestFlight送信を承認済み。実署名、変更後のXcodeビルド、Apple側の受理は秘密鍵の本人入力後に確認する。設定手順はDocumentation/INSTALL.md。
+`Sign and prepare TestFlight` はmainからの手動実行のみ。既定は署名検査、uploadを選ぶとAppleへ送信する。無料枠・予算0ドルの課金停止設定を維持する。署名関連の17テストは合格。Swift集計10テストとSimulatorビルドの履歴、実機で残る確認はDocumentation/QA.md、導入はDocumentation/INSTALL.mdを参照。

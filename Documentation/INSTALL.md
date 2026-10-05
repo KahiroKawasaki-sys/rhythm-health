@@ -1,12 +1,14 @@
 # iPhoneへ入れるまで
 
 ## 現在の状態
-Windowsにソースと画面プレビューを作成済み。iPhone用バイナリ、署名、配布URLはまだありません。HTMLをiPhoneへ送ってもAppleの自動連携は動作しません。
+2026-10-06：バージョン1.0・ビルド1.8.1（a98508c）のiPhone向けビルド、Apple配布署名、本体・拡張の権限検査、Apple検証・アップロードが成功。TestFlightで「テスト中」を確認し、本人のみの内部グループへ配布済み。本人のテスター状態は「招待済み」。iPhone実機での表示・データ取得は未検証。
+
+処理結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37332782412
 
 ## Apple登録の進捗（2026-10-05）
 Apple Developer有効化と、本体・表示拡張の2件のApp ID登録を確認済み。開発用の必要権限を設定済み。配布用権限は2026-10-05 18:10（日本時間）にAppleから付与通知を受領。本体と拡張のFamily Controls (Distribution)を保存・再表示で確認済み。Mac上の集計テストと署名なしSimulatorビルドは成功。次は署名とTestFlight・実機確認。
 
-## 配布準備の現行手順（2026-10-05確認）
+## 配布権限取得の記録（2026-10-05）
 Appleの現行フォームは開発者アカウント単位。登録済みの氏名・メール・Team IDと利用条件を表示し、Get Entitlementで取得を申し込む。説明文やBundle IDを入力する欄は今回の画面にはない。本人の明示承認後、2026-10-05に送信済み。Appleの受付完了画面で審査後に連絡される旨を確認。その後、18:10（日本時間）の承認メールでアカウントへの付与を確認。本体と拡張のDistribution設定も有効化済み。
 
 公式フォーム: https://developer.apple.com/contact/request/family-controls-distribution
@@ -16,14 +18,11 @@ Appleの現行フォームは開発者アカウント単位。登録済みの氏
 ビルド候補は本人のGitHubアカウント配下の非公開rhythm-healthリポジトリ。2026-10-05に本人がソースの外部転送・非公開リポジトリ作成を承認済み。既存のVerify iOS sourceは手動実行、1回20分上限、読み取り権限のみで単体テストと署名なしSimulatorビルドを行う。健康実データ・Apple認証情報・証明書は転送しない。無料枠と超過課金の停止条件を確認してから実行し、有料利用は別途承認を得る。非公開リポジトリ https://github.com/KahiroKawasaki-sys/rhythm-health を作成し、ソースを保存済み。2026-10-05に無料枠0/2,000分使用、Actions予算0ドル・Stop usage Yesを確認。ビルド結果は以下の検証履歴とGitHub Actionsを参照。
 
 ## Windowsのみの場合（今回の前提）
-1. Apple Developer Program有効化済み。再購入・再登録は不要。アカウント情報をチャットに貼らない。
-2. クラウドMac上のXcode環境か、Macを持つ開発担当者を用意する。契約、費用発生、外部へのソース転送は別途明示承認してから行う。
-3. 以下のMac手順でソースをビルドする。まずは署名なしビルドとテストを通す。
-4. Family Controlsの配布権限についてAppleの公式手順で申請する。本体とScreenTimeReport拡張に必要な権限・プロファイルをそろえる。申請が通る時期・可否はApple次第。
-5. 本人の承認後、署名したアプリをApp Store Connectへアップロードし、TestFlightで本人のiPhoneへ配布する。
-6. 実機で下記の確認を行い、問題を修正してから普段使いにする。
-
-単にWeb版へ置き換えると、このアプリで必要なAppleの自動連携は実現できません。そのためネイティブ構成を維持しています。
+1. Mac購入は不要。Apple Developer登録とGitHubのクラウドMacによるビルド・署名は完了している。
+2. 本人のiPhoneに[AppleのTestFlight](https://apps.apple.com/jp/app/testflight/id899247664)を入れ、本人宛の招待メールの「View in TestFlight」からRhythmをインストールする。
+3. アプリを開いて端末認証を解除し、設定からヘルスケアの体重・睡眠の読み取りとスクリーンタイムを許可する。
+4. 既存データを更新して表示・数値を確認し、下記の実機確認へ進む。ヘルスケアに元データがない項目は手入力で補える。
+5. 更新版は同じ手動ワークフローから配布する。第三者招待・App Store一般公開・有料枠の利用は今回の承認に含まれない。
 
 ## Mac上の開発担当者向け
 1. iOS 17以降のSDKを持つ対応Xcodeを用意し、`Rhythm.xcodeproj` を開く。最新の実機OSに対応するXcodeを使う。
@@ -60,7 +59,7 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 - 影響は未配布の開発ソースのみ。健康実データへの影響なし。CIの手動検証を配布前の必須手順として継続する。
 - Simulatorの起動・画面確認、iPhone実機の権限とデータ取得、署名、TestFlightは未実施。
 
-## 署名・TestFlight準備（2026-10-05）
+## 署名・TestFlight準備の履歴（2026-10-05、当時の状態）
 - App Store Connectの初回利用規約は本人の明示承認後に同意済み。
 - 署名前の実機向けRelease Archive検証を追加。Prepare unsigned iOS releaseを手動実行する。成果物はGitHub内で1日保持し、IPAとは区別する。
 - APIキーの発行状況は下記を参照。署名用証明書の作成・秘密情報の外部保管、およびTestFlightアップロードは未実施。秘密情報はチャットやGitに貼らない。
@@ -75,7 +74,7 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 - TestFlightはビルド未アップロード。App Store Connect APIは本人の明示承認後、内部開発・テスト用途に限定する追加条件へ同意して申請を提出。2026-10-05に管理画面で利用承認を確認。その後、本人が管理者権限の範囲を確認して明示承認し、チームキー「Rhythm GitHub TestFlight」を生成。キー名の表示と有効なキー1件を確認。秘密鍵のダウンロード・GitHubへの保管、証明書の作成は未実施。次は保管先を確定して、署名・TestFlight用の設定へ進む。
 
 
-## GitHub署名設定（準備済み・未実行）
+## GitHub署名設定（実行・アップロード成功）
 `Sign and prepare TestFlight` は main ブランチから手動実行する。upload=false は署名と検査まで、upload=true は検査後にAppleへ送信する。外部保管とApple側の証明書・プロファイル作成、初回送信は本人の明示承認後に行う。App Store一般公開や第三者招待はこの処理に含まれない。
 
 保存先は `KahiroKawasaki-sys/rhythm-health` の Settings → Secrets and variables → Actions → Repository secrets。
@@ -86,7 +85,7 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 
 キーはAppleアカウント全体への管理者権限を持つ。Repository secretsは、このリポジトリで実行されるワークフローから使用できるため、書き込み権限者による変更の影響を受ける。秘密鍵をソースに保存しない。実行中だけ一時ファイルに展開し、正常終了・処理エラー時に削除する。強制終了時もGitHubホストの一時実行環境とともに破棄される。署名済みIPA・証明書・ログのアーティファクト保存はしない。
 
-Xcodeの自動署名は開発用証明書、配布用クラウド証明書、両App IDのプロファイルを作成・更新する可能性がある。一時実行環境では開発用証明書が増える場合がある。上限エラー時は繰り返し実行せず、今回作成された証明書を特定してから対処する。既存証明書を自動失効しない。
+現在は署名なしArchiveから一時ローカル署名を経て、Appleの配布用クラウド署名と両App IDのプロファイルを取得する。初期の通常Archive試行では開発用証明書が作成された可能性がある。上限エラー時は繰り返し実行せず、今回作成された証明書を特定してから対処する。既存証明書を自動失効しない。
 
 承認とSecrets設定後、無料枠・課金停止条件を確認し、初回は署名検査を通す。実行エラーは解決してから先へ進める。Appleへの送信が成功しても、TestFlight画面で処理完了を確認するまでは利用可能とは扱わない。実機テストは上記の必須項目を実施する。
 
@@ -94,7 +93,7 @@ Xcodeの自動署名は開発用証明書、配布用クラウド証明書、両
 アップロード手順: https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds
 
 
-## 署名設定の進捗（2026-10-05 22:55 JST）
+## 署名設定の履歴（2026-10-05 22:55 JST、当時の状態）
 - 本人がGitHubへのキー・識別情報の保管、Apple側の証明書・署名設定作成、無料枠内での検証と本人向けTestFlightアップロードをまとめて明示承認済み。同じ範囲の承認は繰り返し求めない。
 - 発行済み管理者キーの.p8ファイルは本人のDownloadsに保存済み。ブラウザーの完了通知はタイムアウトしたが、ファイルの存在・サイズ・保存時刻を確認した。中身は読んでいない。ダウンロードは再実行していない。
 - GitHubのRepository secretsにASC_KEY_ID、ASC_ISSUER_ID、APPLE_TEAM_IDを保存し、一覧と保存成功表示を確認済み。値はソースに記録しない。
@@ -107,3 +106,17 @@ Xcodeの自動署名は開発用証明書、配布用クラウド証明書、両
 実行37320983390（616c144）は9つの検査テストに合格後、秘密鍵の形式チェックで停止。Appleへの接続、証明書作成、署名、アップロードには到達していない。保存値の中身は取得していないため、不一致の具体的な内容は未確認。本人へ.p8全文の再入力を依頼し、更新欄を開いた。
 形式チェックは維持し、ファイル名・パスではなくBEGIN/ENDを含む全文が必要だとエラーに明記。Windowsのテキスト編集で付くBOMと改行だけは正規化する。架空の文字列による3テストを追加し、既存の9テストと合わせて検証する。
 結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37320983390
+
+## 配布障害の修正と現在の結果（2026-10-06）
+- 本人の秘密鍵再入力は完了。ヘッダーなしの鍵本文も厳格な形式検査後に復元する。OpenSSLの空パスワード指定を修正し、実際のApple認証成功を確認した。秘密鍵の中身をエージェントは取得していない。
+- 登録済みiPhoneを要求する開発用署名を避け、署名なしArchiveと一時ローカル署名からApple配布署名へ進む方式で成功。
+- スクリーンタイム拡張をExtensionKit形式・Extensionsへの格納に修正。HealthKitは読み取り専用を維持し、Apple検証が要求した利用説明キーを追加。
+- 最終ビルドa98508c、1.8.1は17検査テスト、本体・拡張のビルド、配布署名・プロファイル・権限検査、Appleの検証とアップロードに成功。
+- 形式・権限・説明文の不足を再発させないため、配布前の自動検査に追加した。影響は2026-10-05〜06の初回配布準備のみ。未配布のため利用者の健康記録への影響なし。
+- 本人用内部グループは1人のみ。自動配布は無効。Apple処理完了と暗号化方式の設定後、1.8.1を手動追加し「テスト中」を確認。本人1人・ビルド1個・招待済みの状態。一般公開・第三者招待は行わない。
+- 結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37332782412
+
+## 初回配布完了（2026-10-06）
+バージョン1.0、ビルド1.8.1を本人のみの内部グループへ配布。Apple標準機能以外の暗号化アルゴリズムを実装していないことをソースで確認し、App Store Connectで該当回答を保存。Apple側の状態は「テスト中」、本人の状態は「招待済み」。TestFlightには90日の期限があるため、更新時は再ビルド・再配布する。
+管理画面: https://appstoreconnect.apple.com/apps/6819279929/testflight
+iPhoneへのインストール・実データ取得は本人の操作で確認する。
