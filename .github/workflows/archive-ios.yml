@@ -1,0 +1,22 @@
+name: Prepare unsigned iOS release
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  archive:
+    runs-on: macos-latest
+    timeout-minutes: 20
+    env:
+      RHYTHM_ARCHIVE_PATH: ${{ runner.temp }}/rhythm-release.xcarchive
+    steps:
+      - uses: actions/checkout@v4
+      - name: Archive for iPhone and verify embedded extension
+        run: bash scripts/archive-unsigned.sh
+      - name: Preserve unsigned archive for one day
+        uses: actions/upload-artifact@v4
+        with:
+          name: rhythm-unsigned-release
+          path: ${{ runner.temp }}/rhythm-release.xcarchive
+          retention-days: 1
+          if-no-files-found: error

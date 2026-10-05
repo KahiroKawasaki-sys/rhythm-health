@@ -7,3 +7,7 @@ xcuserdata/
 *.p12
 *.mobileprovision
 .env*
+*.p8
+*.pem
+*.key
+*.xcarchive/

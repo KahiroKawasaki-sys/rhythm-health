@@ -32,5 +32,8 @@
 ## Apple登録（2026-10-05）
 - 本人の明示承認後、App IDを2件登録済み。本体 `com.kawakahi.rhythm`、表示拡張 `com.kawakahi.rhythm.ScreenTimeReport`。
 - 本体：HealthKit、Family Controls (Development)、Data Protection / Complete Protection。表示拡張：Family Controls (Development)。
-- 配布用Family Controls申請は2026-10-05に本人の同意後に送信済み・Apple審査待ち。本人の承認で非公開GitHubへのソース保存を完了。証明書、署名、TestFlightは未実行。申請受付と権限付与は区別する。
+- 配布用Family Controlsは2026-10-05 18:10（日本時間）のAppleメールでアカウントへの付与を確認。本人の指示で本体と拡張のDistribution設定を保存。本人の承認で非公開GitHubへのソース保存を完了。証明書、署名、TestFlightは未実行。申請受付と権限付与は区別する。
 - Team IDはソースに埋め込まず、ビルド環境で本人のチームを指定する。
+
+## 配布準備
+署名なしRelease ArchiveをクラウドMacで作り、iPhoneOS向け本体と表示拡張のBundle ID・バージョン一致を確認する。これはインストール用IPAではない。GitHub成果物は1日で期限切れとなる。署名資格情報の作成・外部保管とTestFlightアップロードは、具体的な範囲の承認後に行う。
