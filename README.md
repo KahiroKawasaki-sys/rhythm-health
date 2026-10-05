@@ -4,7 +4,7 @@
 
 **2026-10-04時点：ソース実装・Windows上の構文/設定確認・HTML画面設計確認まで。iOSビルド、署名、Appleとの接続、実機での動作は未検証。インストール用IPAは未作成です。**
 
-2026-10-05追記：Apple Developerの有効化と、本体・スクリーンタイム表示拡張のApp ID登録（開発用権限）を完了。Xcode設定を登録IDに更新。配布用Family Controls権限の申請は送信済みでApple審査待ち。Xcode 26.6のクラウドMacで10テスト全件合格、本体と拡張の署名なしSimulatorビルド成功。検証したコードは5854201。署名・Simulator起動/描画・実機検証・配布は未実施。
+2026-10-05追記：Apple Developerの有効化と、本体・スクリーンタイム表示拡張のApp ID登録（開発用権限）を完了。Xcode設定を登録IDに更新。配布用Family Controls権限はApple承認済み。本体・拡張のDistribution設定も保存確認済み。Xcode 26.6のクラウドMacで10テスト全件合格、本体と拡張の署名なしSimulatorビルド成功。検証したコードは5854201。署名・Simulator起動/描画・実機検証・配布は未実施。
 
 検証結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37289618379
 
@@ -49,3 +49,6 @@ GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-
 - [睡眠の区分](https://developer.apple.com/documentation/healthkit/hkcategoryvaluesleepanalysis)
 - [スクリーンタイム専用レポートとデータ保護](https://developer.apple.com/documentation/deviceactivity/deviceactivityreport)
 - [Family Controls配布権限の申請](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement)
+
+## 配布準備の更新（2026-10-05）
+本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。API利用に関する追加同意が必要。詳細はDocumentation/INSTALL.md。

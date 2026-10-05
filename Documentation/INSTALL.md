@@ -4,10 +4,10 @@
 Windowsにソースと画面プレビューを作成済み。iPhone用バイナリ、署名、配布URLはまだありません。HTMLをiPhoneへ送ってもAppleの自動連携は動作しません。
 
 ## Apple登録の進捗（2026-10-05）
-Apple Developer有効化と、本体・表示拡張の2件のApp ID登録を確認済み。開発用の必要権限を設定済み。配布用権限は申請受付済み・審査待ち。Mac上の集計テストと署名なしSimulatorビルドは成功。次は配布用権限の付与確認、署名・実機確認。
+Apple Developer有効化と、本体・表示拡張の2件のApp ID登録を確認済み。開発用の必要権限を設定済み。配布用権限は2026-10-05 18:10（日本時間）にAppleから付与通知を受領。本体と拡張のFamily Controls (Distribution)を保存・再表示で確認済み。Mac上の集計テストと署名なしSimulatorビルドは成功。次は署名とTestFlight・実機確認。
 
 ## 配布準備の現行手順（2026-10-05確認）
-Appleの現行フォームは開発者アカウント単位。登録済みの氏名・メール・Team IDと利用条件を表示し、Get Entitlementで取得を申し込む。説明文やBundle IDを入力する欄は今回の画面にはない。本人の明示承認後、2026-10-05に送信済み。Appleの受付完了画面で審査後に連絡される旨を確認。現在は審査待ちで、権限付与済みとは扱わない。
+Appleの現行フォームは開発者アカウント単位。登録済みの氏名・メール・Team IDと利用条件を表示し、Get Entitlementで取得を申し込む。説明文やBundle IDを入力する欄は今回の画面にはない。本人の明示承認後、2026-10-05に送信済み。Appleの受付完了画面で審査後に連絡される旨を確認。その後、18:10（日本時間）の承認メールでアカウントへの付与を確認。本体と拡張のDistribution設定も有効化済み。
 
 公式フォーム: https://developer.apple.com/contact/request/family-controls-distribution
 
@@ -59,3 +59,17 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 - 実行結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37289618379
 - 影響は未配布の開発ソースのみ。健康実データへの影響なし。CIの手動検証を配布前の必須手順として継続する。
 - Simulatorの起動・画面確認、iPhone実機の権限とデータ取得、署名、TestFlightは未実施。
+
+## 署名・TestFlight準備（2026-10-05）
+- App Store Connectの初回利用規約は本人の明示承認後に同意済み。
+- 署名前の実機向けRelease Archive検証を追加。Prepare unsigned iOS releaseを手動実行する。成果物はGitHub内で1日保持し、IPAとは区別する。
+- 署名用キーや証明書の作成・外部保管、およびTestFlightアップロードは未実施。秘密情報はチャットやGitに貼らない。
+
+- Release Archive検証：7cff7e5で成功。本体と拡張のBundle ID、バージョン一致、iphoneosプラットフォーム、実行ファイルを確認。
+- 結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37311729232
+- 初回のworkflow設定ではrunner.tempをジョブ直下で参照し検証エラーになった。ステップ内の設定へ移して再実行で成功。未配布・健康実データへの影響なし。
+- Apple Developerの証明書一覧は未登録。署名用証明書の新規作成が必要。
+
+- App Store Connectに「Rhythm - 日々のリズム」を登録済み。iOS、日本語、Bundle ID com.kawakahi.rhythm、SKU rhythm-health-ios。
+- 管理画面: https://appstoreconnect.apple.com/apps/6819279929/distribution
+- TestFlightはビルド未アップロード。App Store Connect APIは利用権限未取得で、内部開発・テスト用途に限定する追加条件の同意確認待ち。キー未作成、証明書未作成、秘密情報の外部保存なし。
