@@ -92,3 +92,11 @@ Xcodeの自動署名は開発用証明書、配布用クラウド証明書、両
 
 実装の参照: https://developer.apple.com/videos/play/wwdc2021/10204/
 アップロード手順: https://developer.apple.com/help/app-store-connect/manage-builds/upload-builds
+
+
+## 署名設定の進捗（2026-10-05 22:55 JST）
+- 本人がGitHubへのキー・識別情報の保管、Apple側の証明書・署名設定作成、無料枠内での検証と本人向けTestFlightアップロードをまとめて明示承認済み。同じ範囲の承認は繰り返し求めない。
+- 発行済み管理者キーの.p8ファイルは本人のDownloadsに保存済み。ブラウザーの完了通知はタイムアウトしたが、ファイルの存在・サイズ・保存時刻を確認した。中身は読んでいない。ダウンロードは再実行していない。
+- GitHubのRepository secretsにASC_KEY_ID、ASC_ISSUER_ID、APPLE_TEAM_IDを保存し、一覧と保存成功表示を確認済み。値はソースに記録しない。
+- ASC_PRIVATE_KEYだけ本人の直接入力待ち。GitHubの入力欄を開いて引き継ぎ済み。秘密鍵の内容をチャットや画面取得へ出さない。
+- 次は保存済みの秘密情報名だけを確認し、無料枠・課金停止条件を確認後、署名ワークフローを実行する。配布成功後もAppleの処理結果と実機の動作を別々に確認する。
