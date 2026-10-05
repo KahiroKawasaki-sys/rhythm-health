@@ -51,4 +51,4 @@ GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-
 - [Family Controls配布権限の申請](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement)
 
 ## 配布準備の更新（2026-10-05）
-本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。API利用に関する追加同意が必要。詳細はDocumentation/INSTALL.md。
+本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。App Store Connect APIは本人の同意後に利用申請を提出し、2026-10-05に承認を確認。APIキーは未作成。詳細はDocumentation/INSTALL.md。

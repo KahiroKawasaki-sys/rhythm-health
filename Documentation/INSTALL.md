@@ -72,4 +72,4 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 
 - App Store Connectに「Rhythm - 日々のリズム」を登録済み。iOS、日本語、Bundle ID com.kawakahi.rhythm、SKU rhythm-health-ios。
 - 管理画面: https://appstoreconnect.apple.com/apps/6819279929/distribution
-- TestFlightはビルド未アップロード。App Store Connect APIは利用権限未取得で、内部開発・テスト用途に限定する追加条件の同意確認待ち。キー未作成、証明書未作成、秘密情報の外部保存なし。
+- TestFlightはビルド未アップロード。App Store Connect APIは本人の明示承認後、内部開発・テスト用途に限定する追加条件へ同意して申請を提出。2026-10-05に管理画面で利用承認を確認（有効なキー0件）。キー未作成、証明書未作成、秘密情報の外部保存なし。
