@@ -26,11 +26,17 @@ class DistributionChecks(unittest.TestCase):
     def test_extension_does_not_require_healthkit(self):
         self.bundle += ".ScreenTimeReport"
         self.info["CFBundleIdentifier"] = self.bundle
+        self.info["EXAppExtensionAttributes"] = {"EXExtensionPointIdentifier": "com.apple.deviceactivityui.report-extension"}
         for ent in (self.signed, self.profile["Entitlements"]):
             ent["application-identifier"] = f"{self.team}.{self.bundle}"
             del ent["com.apple.developer.healthkit"]
             del ent["com.apple.developer.default-data-protection"]
         self.check()
+
+    def test_legacy_report_metadata_is_rejected(self):
+        self.test_extension_does_not_require_healthkit()
+        self.info["NSExtension"] = {"NSExtensionPointIdentifier": "com.apple.deviceactivityui.report-extension"}
+        with self.assertRaises(ValueError): self.check()
 
     def test_missing_family_controls_on_either_side(self):
         for target in (self.signed, self.profile["Entitlements"]):

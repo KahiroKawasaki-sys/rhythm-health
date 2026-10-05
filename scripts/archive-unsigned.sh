@@ -19,13 +19,15 @@ from pathlib import Path
 import plistlib, sys
 archive = Path(sys.argv[1])
 app = archive / "Products/Applications/Rhythm.app"
-extension = app / "PlugIns/RhythmScreenTime.appex"
+extension = app / "Extensions/RhythmScreenTime.appex"
 with (app / "Info.plist").open("rb") as f:
     main = plistlib.load(f)
 with (extension / "Info.plist").open("rb") as f:
     report = plistlib.load(f)
 assert main["CFBundleIdentifier"] == "com.kawakahi.rhythm"
 assert report["CFBundleIdentifier"] == "com.kawakahi.rhythm.ScreenTimeReport"
+assert report["EXAppExtensionAttributes"]["EXExtensionPointIdentifier"] == "com.apple.deviceactivityui.report-extension"
+assert "NSExtension" not in report
 assert main["CFBundleVersion"] == report["CFBundleVersion"]
 assert main["CFBundleShortVersionString"] == report["CFBundleShortVersionString"]
 assert main["DTPlatformName"] == report["DTPlatformName"] == "iphoneos"

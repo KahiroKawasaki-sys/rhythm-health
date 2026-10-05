@@ -12,7 +12,7 @@ import tempfile
 import textwrap
 
 BUNDLES = {"Rhythm.app": "com.kawakahi.rhythm",
-           "Rhythm.app/PlugIns/RhythmScreenTime.appex": "com.kawakahi.rhythm.ScreenTimeReport"}
+           "Rhythm.app/Extensions/RhythmScreenTime.appex": "com.kawakahi.rhythm.ScreenTimeReport"}
 
 
 def require(condition, message):
@@ -42,6 +42,10 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
     require(info.get("CFBundleIdentifier") == bundle, "Unexpected bundle ID")
     require(info.get("CFBundleVersion") == build, "Build number mismatch")
     require(info.get("DTPlatformName") == "iphoneos", "Not an iPhone build")
+    if bundle.endswith(".ScreenTimeReport"):
+        require("NSExtension" not in info and
+                info.get("EXAppExtensionAttributes", {}).get("EXExtensionPointIdentifier") ==
+                "com.apple.deviceactivityui.report-extension", "Report must use ExtensionKit metadata")
     require(profile.get("ExpirationDate", dt.datetime.min) > now, "Expired profile")
     require(team in profile.get("TeamIdentifier", []), "Profile team mismatch")
     require(not profile.get("ProvisionedDevices") and not profile.get("ProvisionsAllDevices"),
@@ -103,7 +107,7 @@ def main():
              "CODE_SIGNING_ALLOWED=NO", "archive"], cwd=root)
         # Carry declared capabilities into export without development profiles/device registration.
         # This ad-hoc intermediate is never distributed; exported Apple signatures are checked below.
-        for relative, source in (("Rhythm.app/PlugIns/RhythmScreenTime.appex", "ScreenTimeReport/ScreenTimeReport.entitlements"),
+        for relative, source in (("Rhythm.app/Extensions/RhythmScreenTime.appex", "ScreenTimeReport/ScreenTimeReport.entitlements"),
                                  ("Rhythm.app", "Rhythm/Rhythm.entitlements")):
             app = archive / "Products/Applications" / relative
             entitlements = plistlib.loads((root / source).read_bytes())

@@ -46,3 +46,7 @@
 
 ## 端末登録なしの配布署名
 GitHub上のArchive作成時に開発用署名を行うと登録済みiPhoneが必要になるため、ビルドは署名なしで行う。エクスポートへ権限を引き継ぐため、本体・拡張へソースで宣言した権限とチーム情報を付けた一時的なローカル署名を施す。この中間物は配布しない。続くXcode exportでAppleの配布用クラウド署名・プロファイルを取得し、最終IPAに対する既存の検査を全て通過してからアップロードする。
+
+
+## スクリーンタイム表示拡張の配布形式
+DeviceActivityReportExtensionはExtensionKit形式でビルドし、アプリ内Extensionsへ埋め込む。Info.plistはEXAppExtensionAttributes/EXExtensionPointIdentifierを使う。旧NSExtension形式やPlugInsへの格納は使わない。署名後の検査でこの形式も確認する。

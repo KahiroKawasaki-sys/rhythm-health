@@ -20,9 +20,9 @@
 	<string>Rhythm Screen Time</string>
 	<key>CFBundlePackageType</key>
 	<string>XPC!</string>
-	<key>NSExtension</key>
+	<key>EXAppExtensionAttributes</key>
 	<dict>
-		<key>NSExtensionPointIdentifier</key>
+		<key>EXExtensionPointIdentifier</key>
 		<string>com.apple.deviceactivityui.report-extension</string>
 	</dict>
 </dict>
