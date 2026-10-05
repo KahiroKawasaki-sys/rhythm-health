@@ -4,7 +4,7 @@
 Windowsにソースと画面プレビューを作成済み。iPhone用バイナリ、署名、配布URLはまだありません。HTMLをiPhoneへ送ってもAppleの自動連携は動作しません。
 
 ## Apple登録の進捗（2026-10-05）
-Apple Developer有効化と、本体・表示拡張の2件のApp ID登録を確認済み。開発用の必要権限を設定済み。これから行うのはMac上のビルド、配布用権限、署名・実機確認。
+Apple Developer有効化と、本体・表示拡張の2件のApp ID登録を確認済み。開発用の必要権限を設定済み。配布用権限は申請受付済み・審査待ち。Mac上の集計テストと署名なしSimulatorビルドは成功。次は配布用権限の付与確認、署名・実機確認。
 
 ## 配布準備の現行手順（2026-10-05確認）
 Appleの現行フォームは開発者アカウント単位。登録済みの氏名・メール・Team IDと利用条件を表示し、Get Entitlementで取得を申し込む。説明文やBundle IDを入力する欄は今回の画面にはない。本人の明示承認後、2026-10-05に送信済み。Appleの受付完了画面で審査後に連絡される旨を確認。現在は審査待ちで、権限付与済みとは扱わない。
@@ -27,7 +27,7 @@ Appleの現行フォームは開発者アカウント単位。登録済みの氏
 
 ## Mac上の開発担当者向け
 1. iOS 17以降のSDKを持つ対応Xcodeを用意し、`Rhythm.xcodeproj` を開く。最新の実機OSに対応するXcodeを使う。
-2. `bash scripts/verify-mac.sh` を実行。テスト失敗やコンパイルエラーを修正する。現時点ではWindowsで構文解析しただけで、型チェックやSDK検証は未実施。
+2. `bash scripts/verify-mac.sh` を実行。テスト失敗やコンパイルエラーを修正する。2026-10-05にクラウドMacのXcode 26.6で10テストと署名なしSimulatorビルドを完了。変更したコードは同じ手順で再検証する。
 3. 各ターゲットのSigning & Capabilitiesで自分のTeamを選択する。
 4. 登録済みBundle IDは本体 `com.kawakahi.rhythm`、拡張 `com.kawakahi.rhythm.ScreenTimeReport`。Xcode側も設定済み。テスト用は `com.kawakahi.rhythm.tests`（Appleへの登録対象外）。Team IDはソースに保存せず、ビルド環境で指定する。
 5. 本体：HealthKit、Family Controls、Data Protection（Complete）。拡張：Family Controls。entitlementsは同梱済み。App Groupsは使わない。
@@ -52,3 +52,10 @@ Appleの現行フォームは開発者アカウント単位。登録済みの氏
 Rhythm is a personal digital-wellbeing app for an individual user. It uses individual Family Controls authorization to display the user's own iPhone activity in a DeviceActivityReport extension. The report helps the user reflect on screen time alongside their sleep and body-mass records. Screen Time data remains within the report extension; the app does not export it to the containing app, a shared container, an analytics service, or a server. The app does not use this data for advertising or share it with other people.
 
 この文面は未送信の補足説明用。2026-10-05に確認した現行フォームには説明文の入力欄がないため、Appleから追加説明を求められた場合のみ使用する。
+
+## 検証履歴（2026-10-05）
+- 初回368cc2a：10テスト合格。共有レポート定義にSwiftUIのimportがなく、拡張のコンパイルで停止。
+- 修正版5854201：SwiftUIのimportを追加。同じ手順を再実行し、10テスト合格・本体と拡張の署名なしSimulatorビルド成功（ジョブ2分14秒）。
+- 実行結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37289618379
+- 影響は未配布の開発ソースのみ。健康実データへの影響なし。CIの手動検証を配布前の必須手順として継続する。
+- Simulatorの起動・画面確認、iPhone実機の権限とデータ取得、署名、TestFlightは未実施。

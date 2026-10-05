@@ -4,7 +4,9 @@
 
 **2026-10-04時点：ソース実装・Windows上の構文/設定確認・HTML画面設計確認まで。iOSビルド、署名、Appleとの接続、実機での動作は未検証。インストール用IPAは未作成です。**
 
-2026-10-05追記：Apple Developerの有効化と、本体・スクリーンタイム表示拡張のApp ID登録（開発用権限）を完了。Xcode設定を登録IDに更新。配布用Family Controls権限の申請は送信済みでApple審査待ち。ビルド・署名・実機検証・配布は引き続き未実施。
+2026-10-05追記：Apple Developerの有効化と、本体・スクリーンタイム表示拡張のApp ID登録（開発用権限）を完了。Xcode設定を登録IDに更新。配布用Family Controls権限の申請は送信済みでApple審査待ち。Xcode 26.6のクラウドMacで10テスト全件合格、本体と拡張の署名なしSimulatorビルド成功。検証したコードは5854201。署名・Simulator起動/描画・実機検証・配布は未実施。
+
+検証結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37289618379
 
 ## 入っている機能
 1. 今日：その日の体重・睡眠・自動スクリーンタイム。
