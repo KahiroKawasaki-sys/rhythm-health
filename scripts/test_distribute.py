@@ -1,7 +1,7 @@
 import copy
 import datetime as dt
 import unittest
-from distribute import check_distribution
+from distribute import check_distribution, normalize_private_key
 
 class DistributionChecks(unittest.TestCase):
     def setUp(self):
@@ -70,6 +70,21 @@ class DistributionChecks(unittest.TestCase):
             target[field] = bad
             with self.assertRaises(ValueError): self.check()
             target[field] = old
+
+
+class KeyTextChecks(unittest.TestCase):
+    # Synthetic format fixtures only; these are not cryptographic keys.
+    SAMPLE = "-----BEGIN PRIVATE KEY-----\nnot-a-real-key\n-----END PRIVATE KEY-----\n"
+
+    def test_plain_text(self):
+        self.assertEqual(normalize_private_key(self.SAMPLE), self.SAMPLE)
+
+    def test_windows_bom_and_line_endings(self):
+        self.assertEqual(normalize_private_key("\ufeff" + self.SAMPLE.replace("\n", "\r\n")), self.SAMPLE)
+
+    def test_rejects_path_and_incomplete_text(self):
+        for value in ("C:/Downloads/AuthKey_example.p8", "AuthKey_example.p8", "-----BEGIN PRIVATE KEY-----", ""):
+            with self.assertRaises(ValueError): normalize_private_key(value)
 
 if __name__ == "__main__":
     unittest.main()

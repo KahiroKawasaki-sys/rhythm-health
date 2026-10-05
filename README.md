@@ -51,8 +51,8 @@ GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-
 - [Family Controls配布権限の申請](https://developer.apple.com/documentation/familycontrols/requesting-the-family-controls-entitlement)
 
 ## 配布準備の更新（2026-10-05）
-本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。App Store Connect APIは本人の同意後に利用申請を提出し、2026-10-05に承認を確認。本人の明示承認後、管理者キー「Rhythm GitHub TestFlight」を作成し、有効なキー1件を確認。秘密鍵を本人のDownloadsへダウンロード済み（内容未読）。GitHubに3識別情報を保管済み、ASC_PRIVATE_KEYのみ本人入力待ち。詳細はDocumentation/INSTALL.md。
+本体・拡張のFamily Controls (Distribution)有効化とApp Store Connectのアプリ登録を完了。実機向け署名なしRelease Archive検査も成功（7cff7e5）。署名・TestFlightアップロード・実機確認は未実施。App Store Connect APIは本人の同意後に利用申請を提出し、2026-10-05に承認を確認。本人の明示承認後、管理者キー「Rhythm GitHub TestFlight」を作成し、有効なキー1件を確認。秘密鍵を本人のDownloadsへダウンロード済み（内容未読）。GitHubに4項目を登録済み。初回実行で秘密鍵の形式確認に失敗したため、ASC_PRIVATE_KEYの全文を本人に再入力依頼中。詳細はDocumentation/INSTALL.md。
 
 
 ## 手動署名ワークフロー（準備済み）
-`Sign and prepare TestFlight` を追加。通常のpushでは動作しない。既定は署名検査のみ、明示選択時だけAppleへアップロードする。署名権限の不足、チーム違い、期限切れ、開発用プロファイルを検出する9テストはWindowsで合格。Python構文・YAML・両Info.plistのビルド番号設定を確認済み。本人はGitHub保管・証明書作成・無料枠内での本人向けTestFlight送信を承認済み。実署名、変更後のXcodeビルド、Apple側の受理は秘密鍵の本人入力後に確認する。設定手順はDocumentation/INSTALL.md。
+`Sign and prepare TestFlight` を追加。通常のpushでは動作しない。既定は署名検査のみ、明示選択時だけAppleへアップロードする。署名権限の不足、チーム違い、期限切れ、開発用プロファイルを検出する9テストと秘密鍵の文字形式に関する3テストはWindowsで合格。Python構文・YAML・両Info.plistのビルド番号設定を確認済み。本人はGitHub保管・証明書作成・無料枠内での本人向けTestFlight送信を承認済み。実署名、変更後のXcodeビルド、Apple側の受理は秘密鍵の本人入力後に確認する。設定手順はDocumentation/INSTALL.md。

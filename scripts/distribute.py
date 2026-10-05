@@ -17,6 +17,16 @@ def require(condition, message):
         raise ValueError(message)
 
 
+def normalize_private_key(text):
+    # Ignore a UTF-8 BOM introduced by an editor, but never guess missing key material.
+    text = text.strip().lstrip("\ufeff").strip().replace("\r\n", "\n")
+    lines = text.splitlines()
+    require(len(lines) >= 3 and lines[0] == "-----BEGIN PRIVATE KEY-----" and
+            lines[-1] == "-----END PRIVATE KEY-----",
+            "ASC_PRIVATE_KEY must contain the entire .p8 text, including BEGIN/END lines; not its filename or path.")
+    return text + "\n"
+
+
 def check_distribution(info, signed, profile, bundle, team, build, now):
     require(info.get("CFBundleIdentifier") == bundle, "Unexpected bundle ID")
     require(info.get("CFBundleVersion") == build, "Build number mismatch")
@@ -54,8 +64,7 @@ def main():
     require(re.fullmatch(r"[A-Z0-9]{10}", key_id) is not None, "Invalid key ID")
     require(re.fullmatch(r"[A-Z0-9]{10}", team) is not None, "Invalid team ID")
     require(re.fullmatch(r"[0-9a-fA-F-]{36}", issuer) is not None, "Invalid issuer ID")
-    require(key_text.strip().startswith("-----BEGIN PRIVATE KEY-----") and
-            key_text.strip().endswith("-----END PRIVATE KEY-----"), "Invalid private key format")
+    key_text = normalize_private_key(key_text)
     upload = os.environ.get("RHYTHM_UPLOAD", "false")
     require(upload in ("true", "false"), "Invalid upload selection")
     sequence, attempt = os.environ["GITHUB_RUN_NUMBER"], os.environ["GITHUB_RUN_ATTEMPT"]
