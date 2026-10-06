@@ -35,8 +35,8 @@ Appleの現行フォームは開発者アカウント単位。登録済みの氏
 8. 実機でアプリのロックを解除し、体重・睡眠・スクリーンタイムをそれぞれ許可する。読み取りを拒否した場合、データなしと区別できないというApple仕様に注意。
 9. TestFlight等で配布する場合は配布用Family Controls権限・証明書・プロファイルを確認し、Archive/Validateを通してから、本人の承認後にアップロードする。
 
-## v1.1フェーズ2のApple側作業（本人）
-コードとプロジェクト設定は追加済み。署名付きの配布（testflight.yml）は、次の3つが済むまで失敗する。
+## v1.1フェーズ2のApple側作業
+**2026-10-07 完了**：App Group `group.com.kawakahi.rhythm`（名前 Rhythm Shared）を作成し、下記3つのApp IDを登録。本体を含む4つにApp Groupを割り当て、Family Controls（開発用・配布用）を有効化。配布用はアカウント単位で付与済みのため追加申請は不要だった。`testflight.yml`（upload=false）で署名検査が成功。以下は記録として残す手順。
 1. Certificates, Identifiers & Profiles → Identifiers → App Groups で `group.com.kawakahi.rhythm` を作る。
 2. App IDsで次の3つを登録する（Explicit）。Capabilitiesは Family Controls と App Groups（上のグループを割り当て）。
    - `com.kawakahi.rhythm.Monitor`
