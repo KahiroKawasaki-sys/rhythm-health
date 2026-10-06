@@ -17,7 +17,7 @@ final class RhythmShieldAction: ShieldActionDelegate {
             completion(.close)
         case .secondaryButtonPressed:
             GateNotice.postGateRequest { completion(.close) }
-        @unknown default:
+        default:
             completion(.none)
         }
     }

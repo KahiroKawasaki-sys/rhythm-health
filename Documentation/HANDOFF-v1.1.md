@@ -22,6 +22,18 @@
 6. Webプレビュー（`Preview/index.html`）を更新し、375pxと1280pxで見た目を確認する。
 
 ## フェーズ2（目的選択の仕組み）
+**状況（2026-10-07）**：コードとプロジェクト設定をブランチ `v1.1-phase2` に実装。`verify-ios.yml`（単体テスト28本＋シミュレータ向けビルド）と `archive-ios.yml`（署名なしの実機向けアーカイブで拡張3つの格納・バージョン一致を検査）が成功（Xcode 26.6）。mainへの統合と実機確認は未実施。Apple側の登録が済むまで署名付き配布はできない。手順は `INSTALL.md` の「v1.1フェーズ2のApple側作業」。
+- 実装したもの
+  - `Shared/GateMath.swift`：待機秒数・遊び予算・緊急解除・再遮断の区間（15分未満は開始を過去にずらす）・振り返りの集計。テストは `Tests/GateMathTests.swift`。
+  - `Gate/GateShared.swift`：App Groupのファイル（設定＝最初のロック解除後に読める保護、記録＝完全保護、どちらもバックアップ対象外）、シールドのかけ外し、監視名、通知。本体と拡張3つで共有。
+  - 拡張：`Monitor/`（解除の終わりに再遮断・到達ラインの記録）、`ShieldConfiguration/`（文言と今日の回数）、`ShieldAction/`（やめておく＝記録して閉じる／理由を選んで開く＝通知を出して閉じる）。3つとも旧NSExtension形式で `PlugIns` に格納。
+  - 本体：`Rhythm/GateStore.swift`（オン・オフ、解除、通知の受け取り、rhythm://gate）、`Rhythm/GateViews.swift`（目的選択・深呼吸・ほめる演出・設定・振り返りカード）。
+  - `scripts/distribute.py`・`archive-unsigned.sh`：拡張5つ分の署名・権限・App Groupの検査。
+- 設計上の判断
+  - 再遮断の予約に失敗したら、遮断を外さない（外しっぱなしを防ぐ）。本体の復帰時にも期限切れなら戻す。
+  - 設定ファイルは監視拡張がロック中に読めるよう「最初のロック解除後」保護にした（中身はAppleの識別子と分数だけ）。目的・回数の記録は完全保護。
+  - 到達ラインはロック中に越えると書けないため、記録できなかった分は残らない（画面に「おおよそ」と明記）。
+  - Webプレビュー（`Preview/index.html`）はフェーズ2では未更新。
 - **本人が先にやること**
   - Apple DeveloperでBundle IDを3つ登録する（例：`com.kawakahi.rhythm.Monitor`、`.ShieldConfiguration`、`.ShieldAction`）。
   - App Group `group.com.kawakahi.rhythm` を作り、本体と各拡張に付ける。

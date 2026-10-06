@@ -28,12 +28,23 @@ Appleの現行フォームは開発者アカウント単位。登録済みの氏
 1. iOS 17以降のSDKを持つ対応Xcodeを用意し、`Rhythm.xcodeproj` を開く。最新の実機OSに対応するXcodeを使う。
 2. `bash scripts/verify-mac.sh` を実行。テスト失敗やコンパイルエラーを修正する。2026-10-05にクラウドMacのXcode 26.6で10テストと署名なしSimulatorビルドを完了。変更したコードは同じ手順で再検証する。
 3. 各ターゲットのSigning & Capabilitiesで自分のTeamを選択する。
-4. 登録済みBundle IDは本体 `com.kawakahi.rhythm`、拡張 `com.kawakahi.rhythm.ScreenTimeReport`。Xcode側も設定済み。テスト用は `com.kawakahi.rhythm.tests`（Appleへの登録対象外）。Team IDはソースに保存せず、ビルド環境で指定する。
-5. 本体：HealthKit、Family Controls、Data Protection（Complete）。拡張：Family Controls。entitlementsは同梱済み。App Groupsは使わない。
+4. 登録済みBundle IDは本体 `com.kawakahi.rhythm`、拡張 `com.kawakahi.rhythm.ScreenTimeReport`。Xcode側も設定済み。テスト用は `com.kawakahi.rhythm.tests`（Appleへの登録対象外）。Team IDはソースに保存せず、ビルド環境で指定する。v1.1フェーズ2で拡張3つ（`.Monitor`・`.ShieldConfiguration`・`.ShieldAction`）を追加した（Apple側の登録は下記）。
+5. 本体：HealthKit、Family Controls、Data Protection（Complete）、App Group。表示拡張：Family Controls。フェーズ2の拡張3つ：Family Controls、App Group。entitlementsは同梱済み。App Groupは `group.com.kawakahi.rhythm`（ひと呼吸の設定と記録だけを置く。スクリーンタイムの利用時間の値は置かない）。
 6. iPhoneのパスコードを有効にする。開発用実機では必要に応じてデベロッパモードを有効にする。
 7. Scheme `Rhythm` を選択してビルド・起動。Simulatorの画面表示だけではHealthKit/Screen Timeの受入試験に合格としない。
 8. 実機でアプリのロックを解除し、体重・睡眠・スクリーンタイムをそれぞれ許可する。読み取りを拒否した場合、データなしと区別できないというApple仕様に注意。
 9. TestFlight等で配布する場合は配布用Family Controls権限・証明書・プロファイルを確認し、Archive/Validateを通してから、本人の承認後にアップロードする。
+
+## v1.1フェーズ2のApple側作業（本人）
+コードとプロジェクト設定は追加済み。署名付きの配布（testflight.yml）は、次の3つが済むまで失敗する。
+1. Certificates, Identifiers & Profiles → Identifiers → App Groups で `group.com.kawakahi.rhythm` を作る。
+2. App IDsで次の3つを登録する（Explicit）。Capabilitiesは Family Controls と App Groups（上のグループを割り当て）。
+   - `com.kawakahi.rhythm.Monitor`
+   - `com.kawakahi.rhythm.ShieldConfiguration`
+   - `com.kawakahi.rhythm.ShieldAction`
+3. 既存の本体 `com.kawakahi.rhythm` にも App Groups を有効にして、同じグループを割り当てる。
+4. 新しい3つのBundle IDそれぞれで、Family Controls (Distribution) の利用可否を確認する。前回はアカウント単位で付与されたため、そのまま使える可能性がある。使えない場合はAppleに申請する（前回は申請の翌日に付与）。
+5. 済んだら `Sign and prepare TestFlight` を upload=false で実行し、署名と権限の検査を先に通す。
 
 ## 必須の実機確認
 1. 既存の体重と睡眠を取得できる。権限を拒否/後から取り消しても、許可済みと誤表示しない。
