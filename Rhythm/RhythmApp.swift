@@ -13,7 +13,7 @@ import SwiftUI
                 Palette.background.ignoresSafeArea()
                 if lock.isUnlocked {
                     RootView().environmentObject(journal).environmentObject(health).environmentObject(screen)
-                        .task { journal.load(); screen.updateStatus(); await health.refresh() }
+                        .task { journal.load(); screen.loadSelection(); screen.updateStatus(); await health.refresh() }
                 } else {
                     VStack(spacing: 24) {
                         Image(systemName: "leaf").font(.system(size: 52)).foregroundStyle(Palette.green)

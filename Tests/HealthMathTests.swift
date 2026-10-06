@@ -79,4 +79,87 @@ final class HealthMathTests: XCTestCase {
         XCTAssertEqual(days.map { c.component(.day, from: $0) }, [7, 8, 9])
         XCTAssertEqual(days.map { c.component(.hour, from: $0) }, [0, 0, 0])
     }
+
+    // MARK: v1.1 長期の振り返り
+    private var now: Date { date("2026-10-04T15:00:00") }
+    private var yesterday: Date { date("2026-10-03T00:00:00") }
+
+    func testPeriodDaysCoverRequestedLengthAndEndYesterday() {
+        let year = HealthMath.periodDays(.year, now: now, calendar: calendar)
+        XCTAssertEqual(year.count, 365); XCTAssertEqual(year.last, yesterday)
+        XCTAssertEqual(HealthMath.periodDays(.quarter, now: now, calendar: calendar).count, 90)
+        let monthly = HealthMath.periodDays(.monthly, now: now, calendar: calendar)
+        XCTAssertEqual(monthly.first, date("2025-11-01T00:00:00")); XCTAssertEqual(monthly.last, yesterday)
+    }
+    func testComparisonIsTheAdjacentEarlierPeriod() {
+        for period in [ReviewPeriod.week, .month, .quarter] {
+            let current = HealthMath.periodDays(period, now: now, calendar: calendar)
+            let before = HealthMath.comparisonDays(period, now: now, calendar: calendar)
+            XCTAssertEqual(before.count, current.count)
+            XCTAssertEqual(calendar.date(byAdding: .day, value: 1, to: before.last!), current.first)
+        }
+        XCTAssertTrue(HealthMath.comparisonDays(.monthly, now: now, calendar: calendar).isEmpty)
+    }
+    func testYearComparisonIsPreviousYearWithoutDuplicates() {
+        let before = HealthMath.comparisonDays(.year, now: now, calendar: calendar)
+        XCTAssertEqual(before.last, date("2025-10-03T00:00:00"))
+        XCTAssertEqual(Set(before).count, before.count)
+        let leap = HealthMath.comparisonDays(.year, now: date("2028-06-01T12:00:00"), calendar: calendar)
+        XCTAssertEqual(Set(leap).count, leap.count)
+        XCTAssertLessThanOrEqual(leap.count, 365)
+        XCTAssertTrue(leap.contains(date("2027-02-28T00:00:00")))
+    }
+    func testFetchStartCoversComparisonAndMovingAverage() {
+        XCTAssertEqual(HealthMath.fetchStart(.week, now: now, calendar: calendar), date("2026-09-13T00:00:00"))
+        XCTAssertLessThan(HealthMath.fetchStart(.monthly, now: now, calendar: calendar), date("2025-09-01T00:00:00"))
+        XCTAssertLessThan(HealthMath.fetchStart(.year, now: now, calendar: calendar), date("2024-10-04T00:00:00"))
+    }
+    func testMovingAverageNeedsThreeRecordsAndIgnoresLaterDays() {
+        let d = { (day: Int) in self.date(String(format: "2026-09-%02dT00:00:00", day)) }
+        XCTAssertNil(HealthMath.movingAverage([d(1): 70, d(3): 72], on: [d(3)], calendar: calendar)[d(3)])
+        let three = HealthMath.movingAverage([d(1): 70, d(3): 72, d(5): 74, d(9): 100], on: [d(5), d(8)], calendar: calendar)
+        XCTAssertEqual(three[d(5)], 72)
+        XCTAssertNil(three[d(8)])
+    }
+    func testBucketsCountRecordedDaysAndMarkPartialPeriods() {
+        let days = HealthMath.days(from: date("2026-09-20T00:00:00"), through: date("2026-10-03T00:00:00"), calendar: calendar)
+        let values: [Date: Double] = [date("2026-09-21T00:00:00"): 6, date("2026-09-22T00:00:00"): 8, date("2026-10-01T00:00:00"): 7]
+        let months = HealthMath.buckets(values, days: days, unit: .month, calendar: calendar)
+        XCTAssertEqual(months.count, 2)
+        XCTAssertEqual(months[0].average, 7); XCTAssertEqual(months[0].recordedDays, 2); XCTAssertEqual(months[0].totalDays, 11)
+        XCTAssertTrue(months[0].isPartial); XCTAssertTrue(months[1].isPartial)
+        var sundayFirst = calendar; sundayFirst.firstWeekday = 1
+        let weeks = HealthMath.buckets(values, days: days, unit: .week, calendar: sundayFirst)
+        XCTAssertEqual(weeks.map(\.totalDays), [7, 7])
+        XCTAssertFalse(weeks[0].isPartial)
+        XCTAssertNil(HealthMath.buckets([:], days: days, unit: .week, calendar: calendar)[0].average)
+    }
+    func testMonthComparisonUsesPreviousMonthAndSameMonthLastYear() {
+        let october = calendar.dateInterval(of: .month, for: now)!
+        let values: [Date: Double] = [date("2026-10-01T00:00:00"): 7, date("2026-10-04T00:00:00"): 99,
+            date("2026-09-10T00:00:00"): 6, date("2025-10-15T00:00:00"): 5]
+        let result = HealthMath.monthComparison(values, month: october, now: now, calendar: calendar)
+        XCTAssertEqual(result.average, 7); XCTAssertEqual(result.recordedDays, 1)
+        XCTAssertEqual(result.previousMonth, 6); XCTAssertEqual(result.lastYear, 5); XCTAssertEqual(result.lastYearRecorded, 1)
+    }
+    func testRecentMonthsEndWithCurrentMonth() {
+        let months = HealthMath.recentMonths(count: 12, now: now, calendar: calendar)
+        XCTAssertEqual(months.count, 12)
+        XCTAssertEqual(months.first?.start, date("2025-11-01T00:00:00")); XCTAssertEqual(months.last?.start, date("2026-10-01T00:00:00"))
+    }
+    func testCalendarGridPadsToFirstWeekday() {
+        var c = calendar; c.firstWeekday = 1
+        let october = c.dateInterval(of: .month, for: now)!
+        let grid = HealthMath.calendarGrid(month: october, calendar: c)
+        XCTAssertEqual(grid.prefix(4).compactMap { $0 }.count, 0)
+        XCTAssertEqual(grid[4], date("2026-10-01T00:00:00")); XCTAssertEqual(grid.count, 4 + 31)
+        c.firstWeekday = 2
+        XCTAssertEqual(HealthMath.calendarGrid(month: october, calendar: c).prefix(while: { $0 == nil }).count, 3)
+    }
+    func testIntensityKeepsMissingDaysUncolored() {
+        XCTAssertNil(HealthMath.intensity(nil, maximum: 10))
+        XCTAssertEqual(HealthMath.intensity(0, maximum: 10), 0)
+        XCTAssertEqual(HealthMath.intensity(15, maximum: 10), 1)
+        XCTAssertEqual(HealthMath.intensity(5, maximum: 0), 0)
+    }
 }

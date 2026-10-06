@@ -9,6 +9,8 @@ import Combine
     @Published private(set) var isLoading = false
     @Published var message: String?
     @Published private(set) var hasRequested = UserDefaults.standard.bool(forKey: "healthRequested")
+    @Published private(set) var loadedStart: Date?
+    private var wantedStart: Date?
     private let store = HKHealthStore()
     private var weightType: HKQuantityType { HKQuantityType(.bodyMass) }
     private var sleepType: HKCategoryType { HKCategoryType(.sleepAnalysis) }
@@ -25,18 +27,37 @@ import Combine
         } catch { message = "ヘルスケアの接続を完了できませんでした。\(error.localizedDescription)" }
     }
 
-    func refresh() async {
-        guard hasRequested, !isLoading, HKHealthStore.isHealthDataAvailable() else { return }
+    /// 選んだ期間に必要な範囲まで広げる。狭い期間に戻しても取得済みの範囲は保つ。
+    func ensureLoaded(_ period: ReviewPeriod) async {
+        let needed = HealthMath.fetchStart(period)
+        if let loadedStart, loadedStart <= needed { return }
+        await refresh(from: needed)
+    }
+
+    func refresh(from requested: Date? = nil) async {
+        wantedStart = [requested, wantedStart, HealthMath.fetchStart(.month)].compactMap { $0 }.min()
+        guard hasRequested, HKHealthStore.isHealthDataAvailable() else { return }
+        // A wider request during loading is kept and run afterwards instead of being dropped.
+        guard !isLoading else { return }
         isLoading = true
-        defer { isLoading = false }
+        var start: Date
+        repeat {
+            start = wantedStart!
+            await load(from: start)
+        } while loadedStart != nil && wantedStart! < start
+        isLoading = false
+    }
+
+    private func load(from first: Date) async {
         // Clear old values: a later refusal must not keep an old HealthKit snapshot visible.
-        weights = [:]; sleep = [:]; lastSync = nil; message = nil
+        weights = [:]; sleep = [:]; lastSync = nil; loadedStart = nil; message = nil
         let now = Date.now
-        let days = HealthMath.completedDays(count: 56, now: now) + [Calendar.current.startOfDay(for: now)]
+        let days = HealthMath.days(from: first, through: now)
         let start = Calendar.current.date(byAdding: .day, value: -1, to: days[0])!
         do {
-            let weightSamples = try await samples(type: weightType, start: start, end: now)
-            let sleepSamples = try await samples(type: sleepType, start: start, end: now)
+            async let weightQuery = samples(type: weightType, start: start, end: now)
+            async let sleepQuery = samples(type: sleepType, start: start, end: now)
+            let (weightSamples, sleepSamples) = try await (weightQuery, sleepQuery)
             weights = HealthMath.latestWeights(weightSamples.compactMap { sample in
                 guard let value = sample as? HKQuantitySample else { return nil }
                 return TimedWeight(date: value.startDate, kilograms: value.quantity.doubleValue(for: .gramUnit(with: .kilo)))
@@ -50,6 +71,7 @@ import Combine
             }
             sleep = HealthMath.sleepByDay(spans, days: days)
             lastSync = now
+            loadedStart = days[0]
             if weights.isEmpty && sleep.isEmpty {
                 message = "読み取れるデータがありません。ヘルスケアに記録があるか、体重・睡眠の読み取りが許可されているか確認してください。"
             }
