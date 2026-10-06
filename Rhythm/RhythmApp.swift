@@ -1,6 +1,8 @@
 import SwiftUI
 
 @main struct RhythmApp: App {
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var gate = GateStore.shared
     @StateObject private var journal = JournalStore()
     @StateObject private var health = HealthStore()
     @StateObject private var screen = ScreenTimeStore()
@@ -12,8 +14,9 @@ import SwiftUI
             ZStack {
                 Palette.background.ignoresSafeArea()
                 if lock.isUnlocked {
-                    RootView().environmentObject(journal).environmentObject(health).environmentObject(screen)
-                        .task { journal.load(); screen.loadSelection(); screen.updateStatus(); await health.refresh() }
+                    RootView().environmentObject(journal).environmentObject(health).environmentObject(screen).environmentObject(gate)
+                        .task { journal.load(); screen.loadSelection(); screen.updateStatus(); gate.load(); await health.refresh() }
+                        .sheet(isPresented: $gate.isGatePresented) { GateView().environmentObject(gate) }
                 } else {
                     VStack(spacing: 24) {
                         Image(systemName: "leaf").font(.system(size: 52)).foregroundStyle(Palette.green)
@@ -34,12 +37,13 @@ import SwiftUI
             }
             .tint(Palette.green).preferredColorScheme(.light)
             .task { await lock.unlock() }
+            .onOpenURL { gate.handle(url: $0) }
             .onChange(of: phase) { _, next in
-                if next == .background { lock.lock() }
+                if next == .background { lock.lock(); gate.isGatePresented = false }
                 if next == .active {
                     Task {
                         if !lock.isUnlocked { await lock.unlock() }
-                        else { screen.updateStatus(); await health.refresh() }
+                        else { screen.updateStatus(); gate.refresh(); await health.refresh() }
                     }
                 }
             }

@@ -244,6 +244,7 @@ struct ReviewView: View {
                     ScreenReportCard(period: period)
                     ScreenReportCard(period: period, sns: true)
                     ScreenCalendarCard()
+                    GateReviewCard(period: period)
                 }
                 Surface {
                     Label("数字から、ひとつ気づく", systemImage: "leaf").font(.headline)

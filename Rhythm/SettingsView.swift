@@ -5,6 +5,7 @@ struct SettingsView: View {
     @EnvironmentObject private var journal: JournalStore
     @EnvironmentObject private var health: HealthStore
     @EnvironmentObject private var screen: ScreenTimeStore
+    @EnvironmentObject private var gate: GateStore
     @State private var sleepGoal = 450
     @State private var screenGoal = 180
     @State private var saved = false
@@ -45,6 +46,7 @@ struct SettingsView: View {
             } header: { Text("SNSとして数えるアプリ") } footer: {
                 Text("X・Instagram・YouTubeと、それぞれのWebサイト（x.com、instagram.com、youtube.com）を選んでください。Appleの仕組みにより、アプリ名はRhythmからは読み取れません。選択内容はこのiPhoneの中にだけ保存します。")
             }
+            GateSettingsSection()
             Section {
                 Stepper("睡眠 \(HealthMath.duration(sleepGoal))", value: $sleepGoal, in: 60...960, step: 15)
                 Stepper("スマホ \(HealthMath.duration(screenGoal))", value: $screenGoal, in: 0...1440, step: 15)
@@ -72,12 +74,12 @@ struct SettingsView: View {
                 Text("手入力はバックアップ対象外です。アプリの削除・端末交換で失われます。Appleヘルスケア側の記録はそのまま残ります。")
                 Text("このアプリは生活記録の振り返りを支えるもので、病気の診断や治療判断は行いません。")
             }.font(.footnote)
-            Section { Text("Rhythm 1.1 · 日々のリズム").foregroundStyle(Palette.secondary) }
+            Section { Text("Rhythm 1.2 · 日々のリズム").foregroundStyle(Palette.secondary) }
         }.navigationTitle("設定").onAppear { sleepGoal = journal.goals.sleepMinutes; screenGoal = journal.goals.screenMinutes }
             .familyActivityPicker(isPresented: $picking, selection: $draft)
             .onChange(of: picking) { _, open in
                 guard !open else { return }
-                do { try screen.saveSelection(draft); selectionMessage = "SNSとして数えるアプリを保存しました" }
+                do { try screen.saveSelection(draft); gate.selectionChanged(draft); selectionMessage = "SNSとして数えるアプリを保存しました" }
                 catch { selectionMessage = nil; screen.message = error.localizedDescription }
             }
             .onChange(of: sleepGoal) { _, _ in saved = false }

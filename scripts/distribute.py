@@ -11,8 +11,23 @@ import sys
 import tempfile
 import textwrap
 
-BUNDLES = {"Rhythm.app": "com.kawakahi.rhythm",
-           "Rhythm.app/Extensions/RhythmScreenTime.appex": "com.kawakahi.rhythm.ScreenTimeReport"}
+# Inner bundles come first so they are re-signed before the app that contains them.
+BUNDLES = {"Rhythm.app/Extensions/RhythmScreenTime.appex": "com.kawakahi.rhythm.ScreenTimeReport",
+           "Rhythm.app/PlugIns/RhythmMonitor.appex": "com.kawakahi.rhythm.Monitor",
+           "Rhythm.app/PlugIns/RhythmShieldConfiguration.appex": "com.kawakahi.rhythm.ShieldConfiguration",
+           "Rhythm.app/PlugIns/RhythmShieldAction.appex": "com.kawakahi.rhythm.ShieldAction",
+           "Rhythm.app": "com.kawakahi.rhythm"}
+ENTITLEMENT_SOURCES = {"com.kawakahi.rhythm": "Rhythm/Rhythm.entitlements",
+                       "com.kawakahi.rhythm.ScreenTimeReport": "ScreenTimeReport/ScreenTimeReport.entitlements",
+                       "com.kawakahi.rhythm.Monitor": "Monitor/Monitor.entitlements",
+                       "com.kawakahi.rhythm.ShieldConfiguration": "ShieldConfiguration/ShieldConfiguration.entitlements",
+                       "com.kawakahi.rhythm.ShieldAction": "ShieldAction/ShieldAction.entitlements"}
+# Legacy NSExtension points used by the gate extensions (the report extension uses ExtensionKit instead).
+EXTENSION_POINTS = {"com.kawakahi.rhythm.Monitor": "com.apple.deviceactivity.monitor-extension",
+                    "com.kawakahi.rhythm.ShieldConfiguration": "com.apple.ManagedSettingsUI.shield-configuration-service",
+                    "com.kawakahi.rhythm.ShieldAction": "com.apple.ManagedSettings.shield-action-service"}
+APP_GROUP = "group.com.kawakahi.rhythm"
+APP_GROUP_BUNDLES = {"com.kawakahi.rhythm", *EXTENSION_POINTS}
 
 
 def require(condition, message):
@@ -46,6 +61,9 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
         require("NSExtension" not in info and
                 info.get("EXAppExtensionAttributes", {}).get("EXExtensionPointIdentifier") ==
                 "com.apple.deviceactivityui.report-extension", "Report must use ExtensionKit metadata")
+    if bundle in EXTENSION_POINTS:
+        require(info.get("NSExtension", {}).get("NSExtensionPointIdentifier") == EXTENSION_POINTS[bundle],
+                "Gate extension point mismatch")
     require(profile.get("ExpirationDate", dt.datetime.min) > now, "Expired profile")
     require(team in profile.get("TeamIdentifier", []), "Profile team mismatch")
     require(not profile.get("ProvisionedDevices") and not profile.get("ProvisionsAllDevices"),
@@ -56,6 +74,8 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
         require(ent.get("com.apple.developer.team-identifier") == team, "Signing team mismatch")
         require(ent.get("get-task-allow") is not True, "Debugging entitlement present")
         require(ent.get("com.apple.developer.family-controls") is True, "Family Controls missing")
+        if bundle in APP_GROUP_BUNDLES:
+            require(APP_GROUP in ent.get("com.apple.security.application-groups", []), "App Group missing")
     if bundle == "com.kawakahi.rhythm":
         for purpose in ("NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"):
             require(bool(info.get(purpose, "").strip()), "HealthKit purpose string missing")
@@ -101,7 +121,7 @@ def main():
         auth = ["-allowProvisioningUpdates", "-authenticationKeyPath", key,
                 "-authenticationKeyID", key_id, "-authenticationKeyIssuerID", issuer]
         archive, exported = work / "Rhythm.xcarchive", work / "export"
-        print("Building and signing Rhythm and its report extension.", flush=True)
+        print("Building and signing Rhythm and its four extensions.", flush=True)
         run(["xcodebuild", "-quiet", "-project", root / "Rhythm.xcodeproj", "-scheme", "Rhythm",
              "-configuration", "Release", "-destination", "generic/platform=iOS",
              "-archivePath", archive, "-derivedDataPath", work / "DerivedData",
@@ -109,11 +129,10 @@ def main():
              "CODE_SIGNING_ALLOWED=NO", "archive"], cwd=root)
         # Carry declared capabilities into export without development profiles/device registration.
         # This ad-hoc intermediate is never distributed; exported Apple signatures are checked below.
-        for relative, source in (("Rhythm.app/Extensions/RhythmScreenTime.appex", "ScreenTimeReport/ScreenTimeReport.entitlements"),
-                                 ("Rhythm.app", "Rhythm/Rhythm.entitlements")):
+        for relative, bundle in BUNDLES.items():
             app = archive / "Products/Applications" / relative
-            entitlements = plistlib.loads((root / source).read_bytes())
-            entitlements.update({"application-identifier": f"{team}.{BUNDLES[relative]}",
+            entitlements = plistlib.loads((root / ENTITLEMENT_SOURCES[bundle]).read_bytes())
+            entitlements.update({"application-identifier": f"{team}.{bundle}",
                                  "com.apple.developer.team-identifier": team, "get-task-allow": False})
             entitlements_path = work / (app.name + ".entitlements")
             with entitlements_path.open("wb") as f:

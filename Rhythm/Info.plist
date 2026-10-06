@@ -4,6 +4,8 @@
 <dict>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>ja</string>
+	<key>CFBundleDisplayName</key>
+	<string>Rhythm</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -12,32 +14,41 @@
 	<string>6.0</string>
 	<key>CFBundleName</key>
 	<string>$(PRODUCT_NAME)</string>
-	<key>CFBundleShortVersionString</key>
-	<string>$(MARKETING_VERSION)</string>
-	<key>CFBundleVersion</key>
-	<string>$(CURRENT_PROJECT_VERSION)</string>
-	<key>CFBundleDisplayName</key>
-	<string>Rhythm</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(MARKETING_VERSION)</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.kawakahi.rhythm</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>rhythm</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(CURRENT_PROJECT_VERSION)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
-	<key>UILaunchScreen</key>
-	<dict/>
+	<key>NSFaceIDUsageDescription</key>
+	<string>あなたの健康記録を保護し、本人だけが開けるようにするためにFace IDを使います。</string>
+	<key>NSHealthShareUsageDescription</key>
+	<string>体重と睡眠を読み取り、日々のリズムと変化をあなたが振り返るために使います。外部サーバーには送りません。</string>
+	<key>NSHealthUpdateUsageDescription</key>
+	<string>体重と睡眠を振り返るためにヘルスケアを利用します。現在のバージョンは読み取りのみで、ヘルスケアへの書き込みは行いません。</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<false/>
 	</dict>
+	<key>UILaunchScreen</key>
+	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
 	</array>
-	<key>NSHealthShareUsageDescription</key>
-	<string>体重と睡眠を読み取り、日々のリズムと変化をあなたが振り返るために使います。外部サーバーには送りません。</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>体重と睡眠を振り返るためにヘルスケアを利用します。現在のバージョンは読み取りのみで、ヘルスケアへの書き込みは行いません。</string>
-	<key>NSFaceIDUsageDescription</key>
-	<string>あなたの健康記録を保護し、本人だけが開けるようにするためにFace IDを使います。</string>
 </dict>
 </plist>

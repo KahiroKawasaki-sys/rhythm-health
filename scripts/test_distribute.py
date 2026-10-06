@@ -14,7 +14,8 @@ class DistributionChecks(unittest.TestCase):
                        "get-task-allow": False,
                        "com.apple.developer.family-controls": True,
                        "com.apple.developer.healthkit": True,
-                       "com.apple.developer.default-data-protection": "NSFileProtectionComplete"}
+                       "com.apple.developer.default-data-protection": "NSFileProtectionComplete",
+                       "com.apple.security.application-groups": ["group.com.kawakahi.rhythm"]}
         self.profile = {"ExpirationDate": self.now + dt.timedelta(days=5),
                         "TeamIdentifier": [self.team], "Entitlements": copy.deepcopy(self.signed)}
 
@@ -37,6 +38,37 @@ class DistributionChecks(unittest.TestCase):
     def test_legacy_report_metadata_is_rejected(self):
         self.test_extension_does_not_require_healthkit()
         self.info["NSExtension"] = {"NSExtensionPointIdentifier": "com.apple.deviceactivityui.report-extension"}
+        with self.assertRaises(ValueError): self.check()
+
+    def make_gate_extension(self, name, point):
+        self.bundle = f"com.kawakahi.rhythm.{name}"
+        self.info["CFBundleIdentifier"] = self.bundle
+        self.info["NSExtension"] = {"NSExtensionPointIdentifier": point}
+        for ent in (self.signed, self.profile["Entitlements"]):
+            ent["application-identifier"] = f"{self.team}.{self.bundle}"
+            del ent["com.apple.developer.healthkit"]
+            del ent["com.apple.developer.default-data-protection"]
+
+    def test_gate_extensions_are_valid(self):
+        for name, point in (("Monitor", "com.apple.deviceactivity.monitor-extension"),
+                            ("ShieldConfiguration", "com.apple.ManagedSettingsUI.shield-configuration-service"),
+                            ("ShieldAction", "com.apple.ManagedSettings.shield-action-service")):
+            self.setUp()
+            self.make_gate_extension(name, point)
+            self.check()
+
+    def test_gate_extension_point_mismatch_is_rejected(self):
+        self.make_gate_extension("Monitor", "com.apple.ManagedSettings.shield-action-service")
+        with self.assertRaises(ValueError): self.check()
+
+    def test_missing_app_group_is_rejected(self):
+        self.make_gate_extension("ShieldAction", "com.apple.ManagedSettings.shield-action-service")
+        for target in (self.signed, self.profile["Entitlements"]):
+            old = target.pop("com.apple.security.application-groups")
+            with self.assertRaises(ValueError): self.check()
+            target["com.apple.security.application-groups"] = old
+        self.setUp()
+        del self.signed["com.apple.security.application-groups"]
         with self.assertRaises(ValueError): self.check()
 
     def test_missing_family_controls_on_either_side(self):

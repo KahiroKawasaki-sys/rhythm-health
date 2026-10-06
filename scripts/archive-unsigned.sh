@@ -33,6 +33,19 @@ assert main["CFBundleShortVersionString"] == report["CFBundleShortVersionString"
 assert main["DTPlatformName"] == report["DTPlatformName"] == "iphoneos"
 assert (app / main["CFBundleExecutable"]).is_file()
 assert (extension / report["CFBundleExecutable"]).is_file()
-print("Unsigned iPhoneOS release archive verified: app and report extension present, versions match.")
+gate = {"RhythmMonitor": ("com.kawakahi.rhythm.Monitor", "com.apple.deviceactivity.monitor-extension"),
+        "RhythmShieldConfiguration": ("com.kawakahi.rhythm.ShieldConfiguration", "com.apple.ManagedSettingsUI.shield-configuration-service"),
+        "RhythmShieldAction": ("com.kawakahi.rhythm.ShieldAction", "com.apple.ManagedSettings.shield-action-service")}
+for name, (bundle, point) in gate.items():
+    plugin = app / "PlugIns" / f"{name}.appex"
+    with (plugin / "Info.plist").open("rb") as f:
+        info = plistlib.load(f)
+    assert info["CFBundleIdentifier"] == bundle
+    assert info["NSExtension"]["NSExtensionPointIdentifier"] == point
+    assert info["CFBundleVersion"] == main["CFBundleVersion"]
+    assert info["CFBundleShortVersionString"] == main["CFBundleShortVersionString"]
+    assert (plugin / info["CFBundleExecutable"]).is_file()
+assert "rhythm" in [scheme for t in main.get("CFBundleURLTypes", []) for scheme in t.get("CFBundleURLSchemes", [])]
+print("Unsigned iPhoneOS release archive verified: app, report and three gate extensions present, versions match.")
 print("This archive is not installable. Signing, upload and real-device checks remain.")
 PY
