@@ -3,13 +3,22 @@ import SwiftUI
 import Charts
 
 @main struct RhythmReportExtension: DeviceActivityReportExtension {
+    // Builder blocks above 10 scenes need iOS 17.4, so the scenes are split into two groups.
     var body: some DeviceActivityReportScene {
+        allScenes
+        snsScenes
+    }
+
+    @DeviceActivityReportBuilder private var allScenes: some DeviceActivityReportScene {
         RhythmReportScene(context: .rhythmToday, period: nil, sns: false)
         RhythmReportScene(context: .rhythmWeek, period: .week, sns: false)
         RhythmReportScene(context: .rhythmMonth, period: .month, sns: false)
         RhythmReportScene(context: .rhythmQuarter, period: .quarter, sns: false)
         RhythmReportScene(context: .rhythmYear, period: .year, sns: false)
         RhythmReportScene(context: .rhythmMonthly, period: .monthly, sns: false)
+    }
+
+    @DeviceActivityReportBuilder private var snsScenes: some DeviceActivityReportScene {
         RhythmReportScene(context: .rhythmSNSWeek, period: .week, sns: true)
         RhythmReportScene(context: .rhythmSNSMonth, period: .month, sns: true)
         RhythmReportScene(context: .rhythmSNSQuarter, period: .quarter, sns: true)
@@ -204,7 +213,6 @@ struct RhythmCalendarScene: DeviceActivityReportScene {
 
 struct ScreenCalendarView: View {
     let configuration: CalendarConfiguration
-    private let green = Color(red: 17/255, green: 90/255, blue: 54/255)
     private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
 
     var body: some View {
@@ -219,14 +227,10 @@ struct ScreenCalendarView: View {
                     }
                     ForEach(Array(HealthMath.calendarGrid(month: month).enumerated()), id: \.offset) { _, day in
                         if let day {
-                            let level = HealthMath.intensity(configuration.totals[day], maximum: maximum)
-                            Text(day.formatted(.dateTime.day())).font(.caption2)
-                                .frame(maxWidth: .infinity, minHeight: 30)
-                                .foregroundStyle((level ?? 0) > 0.6 ? Color.white : Color.primary)
-                                .background(level.map { green.opacity(0.12 + $0 * 0.88) } ?? Color.clear, in: RoundedRectangle(cornerRadius: 6))
-                                .overlay(RoundedRectangle(cornerRadius: 6).strokeBorder(Color.secondary.opacity(level == nil ? 0.3 : 0), style: StrokeStyle(lineWidth: 1, dash: [2, 2])))
-                                .accessibilityLabel(day.formatted(.dateTime.month().day()) + " " + (configuration.totals[day].map { HealthMath.duration(Int($0.rounded())) } ?? "Apple側に記録なし"))
-                        } else { Color.clear.frame(minHeight: 30) }
+                            let minutes: Double? = configuration.totals[day]
+                            let value: String = minutes.map { HealthMath.duration(Int($0.rounded())) } ?? "Apple側に記録なし"
+                            HeatCell(day: day, level: HealthMath.intensity(minutes, maximum: maximum), detail: value)
+                        } else { Color.clear.frame(minHeight: 32) }
                     }
                 }
                 Text("濃いほど長い（この月の最長 \(HealthMath.duration(Int(maximum.rounded())))）· 無色はApple側に記録なし")

@@ -240,19 +240,23 @@ struct ReviewView: View {
                     }
                 }
                 SleepCalendarCard(sleep: data.sleep, target: journal.goals.sleepMinutes)
-                ScreenReportCard(period: period)
-                ScreenReportCard(period: period, sns: true)
-                ScreenCalendarCard()
+                Group {
+                    ScreenReportCard(period: period)
+                    ScreenReportCard(period: period, sns: true)
+                    ScreenCalendarCard()
+                }
                 Surface {
                     Label("数字から、ひとつ気づく", systemImage: "leaf").font(.headline)
                     Text(insight(data.current)).font(.subheadline).lineSpacing(5)
                     Text("記録日数が違う期間の平均は、単純には比較できません。健康状態の診断ではありません。")
                         .font(.caption).foregroundStyle(Palette.secondary)
                 }
-                Text("出典：Appleヘルスケア・手入力。欠測日は平均から除外。")
-                    .font(.caption).foregroundStyle(Palette.secondary)
-                if let sync = health.lastSync { Text("取得 \(sync.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(Palette.secondary) }
-                if let message = health.message { Notice(text: message) }
+                Group {
+                    Text("出典：Appleヘルスケア・手入力。欠測日は平均から除外。")
+                        .font(.caption).foregroundStyle(Palette.secondary)
+                    if let sync = health.lastSync { Text("取得 \(sync.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(Palette.secondary) }
+                    if let message = health.message { Notice(text: message) }
+                }
             }.padding(20).frame(maxWidth: 620).frame(maxWidth: .infinity)
         }.background(Palette.background).navigationTitle("振り返り")
             .task(id: period) { await health.ensureLoaded(period) }
@@ -486,14 +490,9 @@ struct SleepCalendarCard: View {
                 }
                 ForEach(Array(HealthMath.calendarGrid(month: month).enumerated()), id: \.offset) { _, day in
                     if let day {
-                        let level = HealthMath.intensity(sleep[day], maximum: maximum)
-                        Text(day.formatted(.dateTime.day())).font(.caption2)
-                            .frame(maxWidth: .infinity, minHeight: 32)
-                            .foregroundStyle((level ?? 0) > 0.6 ? Color.white : Palette.ink)
-                            .background(level.map { Palette.green.opacity(0.12 + $0 * 0.88) } ?? Color.clear, in: RoundedRectangle(cornerRadius: 6))
-                            .overlay(RoundedRectangle(cornerRadius: 6)
-                                .strokeBorder(Palette.secondary.opacity(level == nil ? 0.3 : 0), style: StrokeStyle(lineWidth: 1, dash: [2, 2])))
-                            .accessibilityLabel(day.formatted(.dateTime.month().day()) + " 睡眠" + (sleep[day].map { HealthMath.duration(Int(($0 * 60).rounded())) } ?? "未記録"))
+                        let hours: Double? = sleep[day]
+                        let value: String = hours.map { "睡眠" + HealthMath.duration(Int(($0 * 60).rounded())) } ?? "未記録"
+                        HeatCell(day: day, level: HealthMath.intensity(hours, maximum: maximum), detail: value)
                     } else { Color.clear.frame(minHeight: 32) }
                 }
             }
