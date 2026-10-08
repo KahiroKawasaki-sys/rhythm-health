@@ -8,6 +8,7 @@ class DistributionChecks(unittest.TestCase):
         self.now = dt.datetime(2026, 1, 1)
         self.bundle, self.team, self.build = "com.kawakahi.rhythm", "TESTTEAM01", "1.2.1"
         self.info = {"CFBundleIdentifier": self.bundle, "CFBundleVersion": self.build, "DTPlatformName": "iphoneos"}
+        self.info["ITSAppUsesNonExemptEncryption"] = False
         self.info.update({"NSHealthShareUsageDescription": "Read records for review", "NSHealthUpdateUsageDescription": "Read only; no writes"})
         self.signed = {"application-identifier": f"{self.team}.{self.bundle}",
                        "com.apple.developer.team-identifier": self.team,
@@ -100,6 +101,17 @@ class DistributionChecks(unittest.TestCase):
             old = self.signed.pop(field)
             with self.assertRaises(ValueError): self.check()
             self.signed[field] = old
+
+    def test_export_compliance_must_be_explicit_and_exempt(self):
+        for value in (None, True, "false", 0):
+            if value is None:
+                self.info.pop("ITSAppUsesNonExemptEncryption", None)
+            else:
+                self.info["ITSAppUsesNonExemptEncryption"] = value
+            with self.assertRaises(ValueError):
+                self.check()
+        self.info["ITSAppUsesNonExemptEncryption"] = False
+        self.check()
 
     def test_missing_healthkit_purpose_is_rejected(self):
         del self.info["NSHealthUpdateUsageDescription"]

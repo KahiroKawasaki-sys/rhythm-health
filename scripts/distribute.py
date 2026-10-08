@@ -77,6 +77,8 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
         if bundle in APP_GROUP_BUNDLES:
             require(APP_GROUP in ent.get("com.apple.security.application-groups", []), "App Group missing")
     if bundle == "com.kawakahi.rhythm":
+        require(info.get("ITSAppUsesNonExemptEncryption") is False,
+                "Explicit export-compliance declaration missing; review encryption use before upload")
         for purpose in ("NSHealthShareUsageDescription", "NSHealthUpdateUsageDescription"):
             require(bool(info.get(purpose, "").strip()), "HealthKit purpose string missing")
         for ent in (signed, allowed):

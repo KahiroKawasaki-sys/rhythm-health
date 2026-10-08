@@ -131,3 +131,11 @@ Rhythm is a personal digital-wellbeing app for an individual user. It uses indiv
 バージョン1.0、ビルド1.8.1を本人のみの内部グループへ配布。Apple標準機能以外の暗号化アルゴリズムを実装していないことをソースで確認し、App Store Connectで該当回答を保存。Apple側の状態は「テスト中」、本人の状態は「招待済み」。TestFlightには90日の期限があるため、更新時は再ビルド・再配布する。
 管理画面: https://appstoreconnect.apple.com/apps/6819279929/testflight
 iPhoneへのインストール・実データ取得は本人の操作で確認する。
+
+
+## 更新版配布の確認（2026-10-08）
+- 10月7日08:56 JSTにビルド1.10.1のApple検証・アップロード成功を確認。アップロードは配布完了とは別の段階。
+- 初回の本人用内部グループは自動配布オフで作成されている。更新時はAppleの処理完了と申告後に、本人用グループへ対象ビルドを追加し「テスト中」まで確認する。
+- 本体にITSAppUsesNonExemptEncryption=falseを追加。配布検査は申告がない場合や想定と異なる場合に停止する。現在の実装がApple標準以外の暗号化を実装しないことをソースで確認。
+- 実装参照: https://developer.apple.com/help/app-store-connect/test-a-beta-version/provide-export-compliance-information-for-beta-builds/
+- 現在、App Store Connectのログイン期限切れでApple側の最新状態は確認待ち。iPhoneへ配布済みとは扱わない。
