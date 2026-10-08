@@ -42,3 +42,11 @@ https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37332782412
 - 今回は既存の1.10.1の配布設定のみ修正。更新版のiPhoneインストール・HealthKit取得・SNS集計・再遮断の実機確認は未実施。
 - 送信結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37548820745
 - テスト可能状態: https://appstoreconnect.apple.com/apps/6819279929/testflight
+
+
+## 再発防止版1.11.1の配布検証（2026-10-08）
+- 0754411を既存の本人用ワークフローでビルド。署名関連21テスト、本体と拡張4つの署名・プロファイル・権限・申告の検査、Apple検証・アップロードが成功。
+- App Store Connectで申告不足が発生せず「テスト準備完了」を確認。同じ本人用グループへ追加後に「テスト中」を確認。
+- バージョン1.0、最新ビルド1.11.1。再発防止の宣言は実際の配布ビルドに反映済み。
+- 今回は配布設定のみの変更。画面や健康データ処理の変更はない。更新版の実機インストール・描画・HealthKit取得・SNS集計・再遮断は未検証。
+- 実行: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37727447785

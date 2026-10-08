@@ -2,9 +2,9 @@
 
 体重・睡眠・スクリーンタイムを振り返る、個人向けiPhoneアプリ。iOS 17以上、SwiftUI製。
 
-**2026-10-08：バージョン1.0・ビルド1.10.1の暗号化申告を完了し、既存の「Rhythm 本人用」内部グループへ追加。「テスト中」を確認した。長期の振り返り・SNS集計・目的選択の実装を含む更新版。iPhoneのTestFlightから更新する。今回の更新版を実機へインストールした後の動作は未検証。**
+**2026-10-08：バージョン1.0・ビルド1.11.1（0754411）を本人用TestFlightへ配布し、「テスト中」を確認。暗号化方式の申告をアプリへ組み込み、申告漏れを配布前に止める21項目の検査も通過した。長期の振り返り・SNS集計・目的選択を含む。iPhoneのTestFlightから更新する。更新後の実機動作は未検証。**
 
-更新版の送信結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37548820745
+更新版の送信結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37727447785
 配布状況: https://appstoreconnect.apple.com/apps/6819279929/testflight
 
 ## 入っている機能
@@ -53,4 +53,4 @@ GitHub Actions用の手動実行ワークフローも `.github/workflows/verify-
 ## 配布運用
 Apple Developer、HealthKit、Family Controls配布権限、App Store Connect、本人用内部テストグループを設定済み。秘密情報は本人の承認で非公開リポジトリのGitHub Actions Secretsへ保管し、ソースには含めない。
 
-`Sign and prepare TestFlight` はmainからの手動実行のみ。既定は署名検査、uploadを選ぶとAppleへ送信する。無料枠・予算0ドルの課金停止設定を維持する。署名関連の17テストは合格。Swift集計10テストとSimulatorビルドの履歴、実機で残る確認はDocumentation/QA.md、導入はDocumentation/INSTALL.mdを参照。
+`Sign and prepare TestFlight` はmainからの手動実行のみ。既定は署名検査、uploadを選ぶとAppleへ送信する。無料枠・予算0ドルの課金停止設定を維持する。署名関連の21テストは合格。Swift集計10テストとSimulatorビルドの履歴、実機で残る確認はDocumentation/QA.md、導入はDocumentation/INSTALL.mdを参照。
