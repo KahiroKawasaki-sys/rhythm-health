@@ -33,3 +33,12 @@ https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37311729232
 2026-10-06：バージョン1.0・ビルド1.8.1（a98508c）のiPhone向けビルド、Apple配布署名、本体・拡張の権限検査、Apple検証・アップロードが成功。TestFlightで「テスト中」を確認し、本人のみの内部グループへ配布済み。本人のテスター状態は「招待済み」。iPhone実機での表示・データ取得は未検証。
 署名関連17テスト合格。秘密鍵形式、プロファイル、配布権限、ExtensionKitの構成、HealthKitの説明文を配布前に検査する。
 https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37332782412
+
+
+## 更新版の配布確認（2026-10-08）
+- 1.10.1（0955371）の署名検査20項目・Apple検証・アップロードは10月7日に成功。長期振り返りと目的選択のSwift単体テスト28件とSimulatorビルドは既存の37542231219で成功済み。
+- 10月8日、App Store Connectで1.10.1の申告未完了・グループ未割り当てを確認。申告を保存後「テスト準備完了」、本人用グループへの追加後「テスト中」を確認。
+- 配布前の申告不足チェックを追加した1494542はPythonテスト21件合格。この修正の新規ビルドは未実行。実機向け最新版は1.10.1。
+- 今回は既存の1.10.1の配布設定のみ修正。更新版のiPhoneインストール・HealthKit取得・SNS集計・再遮断の実機確認は未実施。
+- 送信結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37548820745
+- テスト可能状態: https://appstoreconnect.apple.com/apps/6819279929/testflight
