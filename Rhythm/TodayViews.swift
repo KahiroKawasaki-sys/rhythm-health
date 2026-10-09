@@ -133,6 +133,9 @@ struct TodayScreenCard: View {
                 if !screen.hasSNSSelection {
                     Notice(text: "設定の「アプリの分類」でSNS・動画・仕事のアプリを選ぶと、内訳が分かれます。")
                 }
+                NavigationLink { ScreenTimeDetailView() } label: {
+                    HStack { Text("アプリ別・時間帯別を見る"); Spacer(); Image(systemName: "chevron.right") }.font(.subheadline)
+                }
             } else {
                 Text("スマホとの距離も、見えるように。").font(.subheadline)
                 Text("接続するとiPhoneの利用時間を自動で表示します。").font(.footnote).foregroundStyle(Palette.secondary)

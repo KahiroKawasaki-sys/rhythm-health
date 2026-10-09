@@ -21,33 +21,23 @@ import Combine
         } catch { message = "接続できませんでした。実機のスクリーンタイム設定とアプリの権限を確認してください。\(error.localizedDescription)" }
     }
 
-    func filter(days: Int?) -> DeviceActivityFilter {
-        let calendar = Calendar.current
-        let today = calendar.startOfDay(for: .now)
-        let start = days.map { calendar.date(byAdding: .day, value: -2 * $0, to: today)! } ?? today
-        let end = days == nil ? Date.now : today
-        return DeviceActivityFilter(segment: .daily(during: DateInterval(start: start, end: end)),
+    /// 振り返り：前の期間と今の期間を1日単位で。今日は含めない。
+    func reviewFilter(_ period: ReviewPeriod) -> DeviceActivityFilter {
+        let today = Calendar.current.startOfDay(for: .now)
+        let start = HealthMath.comparisonDays(period).first ?? today
+        return DeviceActivityFilter(segment: .daily(during: DateInterval(start: start, end: today)),
             users: .all, devices: .init([.iPhone]))
     }
 
-    /// 表示期間と比較期間をまとめて渡す。当日の途中データは含めない。
-    func filter(period: ReviewPeriod, sns: Bool) -> DeviceActivityFilter {
-        let today = Calendar.current.startOfDay(for: .now)
-        // fetchStart includes 7 extra days for the weight moving average; screen time does not need them.
-        let start = Calendar.current.date(byAdding: .day, value: 7, to: HealthMath.fetchStart(period)) ?? today
-        return filter(DateInterval(start: start, end: today), sns: sns)
-    }
-
-    func calendarFilter(month: DateInterval, sns: Bool) -> DeviceActivityFilter {
-        let today = Calendar.current.startOfDay(for: .now)
-        return filter(DateInterval(start: month.start, end: max(month.start, min(month.end, today))), sns: sns)
-    }
-
-    private func filter(_ interval: DateInterval, sns: Bool) -> DeviceActivityFilter {
-        guard sns else { return DeviceActivityFilter(segment: .daily(during: interval), users: .all, devices: .init([.iPhone])) }
-        return DeviceActivityFilter(segment: .daily(during: interval), users: .all, devices: .init([.iPhone]),
-            applications: snsSelection.applicationTokens, categories: snsSelection.categoryTokens,
-            webDomains: snsSelection.webDomainTokens)
+    /// 振り返りのカレンダー：月曜始まりの5週間。今日以降は含めない。
+    func calendarFilter(offset: Int) -> DeviceActivityFilter {
+        let calendar = Calendar.current
+        let today = calendar.startOfDay(for: .now)
+        let days = HealthMath.calendarWeeks(offset: offset)
+        let start = days.first ?? today
+        let after = days.last.flatMap { calendar.date(byAdding: .day, value: 1, to: $0) } ?? today
+        return DeviceActivityFilter(segment: .daily(during: DateInterval(start: start, end: max(start, min(after, today)))),
+            users: .all, devices: .init([.iPhone]))
     }
 
     /// 今日のカード用。過去30日と今日を1時間単位で渡す（同じ時刻までの平均と連続日数に使う）。

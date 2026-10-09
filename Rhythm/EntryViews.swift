@@ -14,6 +14,13 @@ struct HistoryView: View {
             row.weight != nil || row.sleepMinutes != nil || journal.records.contains { $0.day == row.day }
         }
     }
+    /// 今日は途中の値（1時間ごとの合計）、それ以前は1日の値。
+    private func steps(on day: Date) -> Double? {
+        if let value = health.stepsDaily[day] { return value }
+        guard day == Calendar.current.startOfDay(for: .now) else { return nil }
+        return HealthMath.dailyTotals(health.stepsHourly)[day]
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 20) {
@@ -34,6 +41,9 @@ struct HistoryView: View {
                             SectionLabel(title: row.day.formatted(.dateTime.month().day().weekday()), detail: "編集 ›")
                             Text("体重 \(row.weight.map { String(format: "%.1f kg", $0) } ?? "—")  ·  睡眠 \(HealthMath.duration(row.sleepMinutes))")
                                 .font(.subheadline).multilineTextAlignment(.leading)
+                            if let steps = steps(on: row.day) {
+                                Text("歩数 \(steps.formatted(.number.precision(.fractionLength(0))))歩").font(.subheadline)
+                            }
                             Text("体重：\(row.weight == nil ? "未記録" : row.weightSource) / 睡眠：\(row.sleepMinutes == nil ? "未記録" : row.sleepSource)")
                                 .font(.caption).foregroundStyle(Palette.secondary)
                             if let manual = journal.records.first(where: { $0.day == row.day }) {

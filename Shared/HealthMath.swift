@@ -112,18 +112,16 @@ enum HealthMath {
     }
 }
 
+/// 振り返りの期間。どれも昨日までで、前の同じ長さの期間と比べる。
 enum ReviewPeriod: String, CaseIterable, Identifiable, Codable {
-    case week, month, quarter, year, monthly
+    case week, month, quarter, year
     var id: String { rawValue }
-    var label: String { ["7日", "28日", "3か月", "1年", "月別"][Self.allCases.firstIndex(of: self)!] }
-    var dayCount: Int? { [7, 28, 90, 365, nil][Self.allCases.firstIndex(of: self)!] }
-    var comparisonLabel: String {
-        if self == .year { return "前年同期間" }
-        if self == .monthly { return "先月" }
-        return "前の\(dayCount ?? 0)日"
-    }
-    /// 90日以上は日々の値より平均の形で見せる。
-    var isLong: Bool { self == .quarter || self == .year || self == .monthly }
+    var label: String { ["週", "月", "3か月", "年"][Self.allCases.firstIndex(of: self)!] }
+    var dayCount: Int { [7, 30, 90, 365][Self.allCases.firstIndex(of: self)!] }
+    var comparisonLabel: String { ["前の7日", "前の30日", "前の3か月", "前の1年"][Self.allCases.firstIndex(of: self)!] }
+    /// 3か月は週平均、1年は月平均の棒で見せる。
+    var isLong: Bool { self == .quarter || self == .year }
+    var bucketUnit: BucketUnit { self == .year ? .month : .week }
 }
 
 struct PeriodBucket: Identifiable, Equatable {
@@ -146,6 +144,19 @@ struct MonthComparison: Equatable {
 }
 
 enum BucketUnit { case week, month }
+
+struct SeriesPoint: Identifiable, Equatable {
+    var start: Date
+    var value: Double?
+    var id: Date { start }
+}
+
+struct PeriodSummary: Equatable {
+    var average: Double?
+    var recordedDays: Int
+    var totalDays: Int
+    var delta: Double?
+}
 
 extension HealthMath {
     static func days(from start: Date, through end: Date, calendar: Calendar = .current) -> [Date] {
@@ -175,36 +186,53 @@ extension HealthMath {
     }
 
     static func periodDays(_ period: ReviewPeriod, now: Date = .now, calendar: Calendar = .current) -> [Date] {
-        if let count = period.dayCount { return completedDays(count: count, now: now, calendar: calendar) }
-        guard let first = recentMonths(count: 12, now: now, calendar: calendar).first else { return [] }
-        return completedDays(in: DateInterval(start: first.start, end: now), now: now, calendar: calendar)
+        completedDays(count: period.dayCount, now: now, calendar: calendar)
     }
 
-    /// 7・28・90日は直前の同日数、1年は前年同期間、月別は月ごとに比べるので空。
+    /// 直前の同じ日数。
     static func comparisonDays(_ period: ReviewPeriod, now: Date = .now, calendar: Calendar = .current) -> [Date] {
-        switch period {
-        case .monthly: return []
-        case .year:
-            let shifted = periodDays(.year, now: now, calendar: calendar).compactMap {
-                calendar.date(byAdding: .year, value: -1, to: $0).map { calendar.startOfDay(for: $0) }
-            }
-            return Array(Set(shifted)).sorted()
-        default:
-            let count = period.dayCount ?? 0
-            return Array(completedDays(count: count * 2, now: now, calendar: calendar).prefix(count))
-        }
+        Array(completedDays(count: period.dayCount * 2, now: now, calendar: calendar).prefix(period.dayCount))
     }
 
     /// 表示・比較・7日移動平均・睡眠の前日正午窓に必要な最古の日。
     static func fetchStart(_ period: ReviewPeriod, now: Date = .now, calendar: Calendar = .current) -> Date {
-        var earliest = calendar.startOfDay(for: now)
-        if period == .monthly {
-            let thisMonth = calendar.dateInterval(of: .month, for: now)?.start ?? earliest
-            earliest = calendar.date(byAdding: .month, value: -13, to: thisMonth) ?? thisMonth
-        } else if let first = (periodDays(period, now: now, calendar: calendar) + comparisonDays(period, now: now, calendar: calendar)).min() {
-            earliest = first
-        }
+        let earliest = comparisonDays(period, now: now, calendar: calendar).first ?? calendar.startOfDay(for: now)
         return calendar.date(byAdding: .day, value: -7, to: earliest) ?? earliest
+    }
+
+    /// 振り返りのカレンダー。月曜始まりの5週間（35日）。offset 0は昨日を含む週で終わり、1ずつ35日前へ。
+    static func calendarWeeks(offset: Int, now: Date = .now, calendar: Calendar = .current) -> [Date] {
+        let today = calendar.startOfDay(for: now)
+        guard let yesterday = calendar.date(byAdding: .day, value: -1, to: today) else { return [] }
+        // weekday: 1=日曜。その週の日曜まで進める。
+        let toSunday = (8 - calendar.component(.weekday, from: yesterday)) % 7
+        guard let lastSunday = calendar.date(byAdding: .day, value: toSunday - 35 * offset, to: yesterday) else { return [] }
+        return (0..<35).reversed().compactMap { calendar.date(byAdding: .day, value: -$0, to: lastSunday) }
+    }
+
+    /// その日を含むカレンダーの offset。表示拡張は受け取ったデータの日付から表示中の5週間を割り出す。
+    static func calendarOffset(containing day: Date, now: Date = .now, calendar: Calendar = .current) -> Int {
+        guard let last = calendarWeeks(offset: 0, now: now, calendar: calendar).last,
+              let distance = calendar.dateComponents([.day], from: calendar.startOfDay(for: day), to: last).day, distance >= 0 else { return 0 }
+        return distance / 35
+    }
+
+    /// 期間のグラフ用の系列。週・月は日ごと、3か月は週平均、1年は月平均。値のない区間はnil。
+    static func series(_ values: [Date: Double], period: ReviewPeriod, now: Date = .now, calendar: Calendar = .current) -> [SeriesPoint] {
+        let days = periodDays(period, now: now, calendar: calendar)
+        guard period.isLong else { return days.map { SeriesPoint(start: $0, value: values[$0]) } }
+        return buckets(values, days: days, unit: period.bucketUnit, calendar: calendar).map { SeriesPoint(start: $0.start, value: $0.average) }
+    }
+
+    /// 期間の1日平均と、前の同じ長さの期間との差。
+    static func periodSummary(_ values: [Date: Double], period: ReviewPeriod, now: Date = .now, calendar: Calendar = .current) -> PeriodSummary {
+        let current = periodDays(period, now: now, calendar: calendar).compactMap { values[$0] }
+        let previous = comparisonDays(period, now: now, calendar: calendar).compactMap { values[$0] }
+        let mean = Self.average(current.map(Optional.some))
+        let before = Self.average(previous.map(Optional.some))
+        var delta: Double?
+        if let mean, let before { delta = mean - before }
+        return PeriodSummary(average: mean, recordedDays: current.count, totalDays: period.dayCount, delta: delta)
     }
 
     static func monthComparison(_ values: [Date: Double], month: DateInterval, now: Date = .now, calendar: Calendar = .current) -> MonthComparison {

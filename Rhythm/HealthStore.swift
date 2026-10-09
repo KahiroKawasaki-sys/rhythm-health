@@ -7,6 +7,8 @@ import Combine
     @Published private(set) var sleep: [Date: Int] = [:]
     /// 1時間ごとの歩数（開始時刻→歩）。過去30日と今日。
     @Published private(set) var stepsHourly: [Date: Double] = [:]
+    /// 1日ごとの歩数。振り返りの期間に合わせて取得する。
+    @Published private(set) var stepsDaily: [Date: Double] = [:]
     @Published private(set) var lastSync: Date?
     @Published private(set) var isLoading = false
     @Published var message: String?
@@ -43,6 +45,12 @@ import Combine
         await refresh(from: needed)
     }
 
+    /// カレンダーで過去へ移ったときに、その日まで広げる。
+    func ensureLoaded(from needed: Date) async {
+        if let loadedStart, loadedStart <= needed { return }
+        await refresh(from: Calendar.current.date(byAdding: .day, value: -7, to: needed) ?? needed)
+    }
+
     func refresh(from requested: Date? = nil) async {
         wantedStart = [requested, wantedStart, HealthMath.fetchStart(.month)].compactMap { $0 }.min()
         guard hasRequested, HKHealthStore.isHealthDataAvailable() else { return }
@@ -63,7 +71,7 @@ import Combine
 
     private func load(from first: Date) async {
         // Clear old values: a later refusal must not keep an old HealthKit snapshot visible.
-        weights = [:]; sleep = [:]; stepsHourly = [:]; lastSync = nil; loadedStart = nil; message = nil
+        weights = [:]; sleep = [:]; stepsHourly = [:]; stepsDaily = [:]; lastSync = nil; loadedStart = nil; message = nil
         let now = Date.now
         let days = HealthMath.days(from: first, through: now)
         let start = Calendar.current.date(byAdding: .day, value: -1, to: days[0])!
@@ -73,8 +81,9 @@ import Combine
             let (weightSamples, sleepSamples) = try await (weightQuery, sleepQuery)
             // 歩数は未許可でも体重・睡眠を消さないよう、失敗を切り離す。
             let today = Calendar.current.startOfDay(for: now)
-            stepsHourly = (try? await hourlySteps(start: Calendar.current.date(byAdding: .day, value: -30, to: today) ?? today,
-                end: now)) ?? [:]
+            stepsHourly = (try? await steps(start: Calendar.current.date(byAdding: .day, value: -30, to: today) ?? today,
+                end: now, interval: DateComponents(hour: 1))) ?? [:]
+            stepsDaily = (try? await steps(start: days[0], end: now, interval: DateComponents(day: 1))) ?? [:]
             weights = HealthMath.latestWeights(weightSamples.compactMap { sample in
                 guard let value = sample as? HKQuantitySample else { return nil }
                 return TimedWeight(date: value.startDate, kilograms: value.quantity.doubleValue(for: .gramUnit(with: .kilo)))
@@ -95,12 +104,12 @@ import Combine
         } catch { message = "取得できませんでした。端末のロックを解除して、もう一度更新してください。\(error.localizedDescription)" }
     }
 
-    private func hourlySteps(start: Date, end: Date) async throws -> [Date: Double] {
+    private func steps(start: Date, end: Date, interval: DateComponents) async throws -> [Date: Double] {
         try await withCheckedThrowingContinuation { continuation in
             let query = HKStatisticsCollectionQuery(quantityType: stepType,
                 quantitySamplePredicate: HKQuery.predicateForSamples(withStart: start, end: end, options: []),
                 options: .cumulativeSum, anchorDate: Calendar.current.startOfDay(for: start),
-                intervalComponents: DateComponents(hour: 1))
+                intervalComponents: interval)
             query.initialResultsHandler = { _, results, error in
                 if let error { continuation.resume(throwing: error); return }
                 var values: [Date: Double] = [:]

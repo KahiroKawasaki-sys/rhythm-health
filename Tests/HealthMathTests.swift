@@ -88,30 +88,18 @@ final class HealthMathTests: XCTestCase {
         let year = HealthMath.periodDays(.year, now: now, calendar: calendar)
         XCTAssertEqual(year.count, 365); XCTAssertEqual(year.last, yesterday)
         XCTAssertEqual(HealthMath.periodDays(.quarter, now: now, calendar: calendar).count, 90)
-        let monthly = HealthMath.periodDays(.monthly, now: now, calendar: calendar)
-        XCTAssertEqual(monthly.first, date("2025-11-01T00:00:00")); XCTAssertEqual(monthly.last, yesterday)
+        XCTAssertEqual(HealthMath.periodDays(.month, now: now, calendar: calendar).count, 30)
     }
     func testComparisonIsTheAdjacentEarlierPeriod() {
-        for period in [ReviewPeriod.week, .month, .quarter] {
+        for period in ReviewPeriod.allCases {
             let current = HealthMath.periodDays(period, now: now, calendar: calendar)
             let before = HealthMath.comparisonDays(period, now: now, calendar: calendar)
             XCTAssertEqual(before.count, current.count)
             XCTAssertEqual(calendar.date(byAdding: .day, value: 1, to: before.last!), current.first)
         }
-        XCTAssertTrue(HealthMath.comparisonDays(.monthly, now: now, calendar: calendar).isEmpty)
-    }
-    func testYearComparisonIsPreviousYearWithoutDuplicates() {
-        let before = HealthMath.comparisonDays(.year, now: now, calendar: calendar)
-        XCTAssertEqual(before.last, date("2025-10-03T00:00:00"))
-        XCTAssertEqual(Set(before).count, before.count)
-        let leap = HealthMath.comparisonDays(.year, now: date("2028-06-01T12:00:00"), calendar: calendar)
-        XCTAssertEqual(Set(leap).count, leap.count)
-        XCTAssertLessThanOrEqual(leap.count, 365)
-        XCTAssertTrue(leap.contains(date("2027-02-28T00:00:00")))
     }
     func testFetchStartCoversComparisonAndMovingAverage() {
         XCTAssertEqual(HealthMath.fetchStart(.week, now: now, calendar: calendar), date("2026-09-13T00:00:00"))
-        XCTAssertLessThan(HealthMath.fetchStart(.monthly, now: now, calendar: calendar), date("2025-09-01T00:00:00"))
         XCTAssertLessThan(HealthMath.fetchStart(.year, now: now, calendar: calendar), date("2024-10-04T00:00:00"))
     }
     func testMovingAverageNeedsThreeRecordsAndIgnoresLaterDays() {
@@ -163,6 +151,29 @@ final class HealthMathTests: XCTestCase {
         XCTAssertEqual(HealthMath.intensity(5, maximum: 0), 0)
     }
 
+    func testCalendarWeeksAreMondayFirstAndEndOnTheWeekOfYesterday() {
+        // 2026-10-04は日曜。昨日（10/3 土）を含む週は10/4（日）で終わる。
+        let weeks = HealthMath.calendarWeeks(offset: 0, now: now, calendar: calendar)
+        XCTAssertEqual(weeks.count, 35)
+        XCTAssertEqual(weeks.last, date("2026-10-04T00:00:00"))
+        XCTAssertEqual(weeks.first, date("2026-08-31T00:00:00"))
+        XCTAssertEqual(calendar.component(.weekday, from: weeks.first!), 2)
+        XCTAssertEqual(HealthMath.calendarWeeks(offset: 1, now: now, calendar: calendar).last, date("2026-08-30T00:00:00"))
+        XCTAssertEqual(HealthMath.calendarOffset(containing: date("2026-08-31T00:00:00"), now: now, calendar: calendar), 0)
+        XCTAssertEqual(HealthMath.calendarOffset(containing: date("2026-08-30T00:00:00"), now: now, calendar: calendar), 1)
+    }
+    func testSeriesAndSummaryCompareWithPreviousPeriod() {
+        let week = HealthMath.periodDays(.week, now: now, calendar: calendar)
+        let before = HealthMath.comparisonDays(.week, now: now, calendar: calendar)
+        var values: [Date: Double] = [:]
+        for day in week.prefix(3) { values[day] = 60 }
+        for day in before.prefix(2) { values[day] = 40 }
+        let summary = HealthMath.periodSummary(values, period: .week, now: now, calendar: calendar)
+        XCTAssertEqual(summary.average, 60); XCTAssertEqual(summary.recordedDays, 3); XCTAssertEqual(summary.delta, 20)
+        let series = HealthMath.series(values, period: .week, now: now, calendar: calendar)
+        XCTAssertEqual(series.count, 7); XCTAssertEqual(series.compactMap(\.value).count, 3)
+        XCTAssertNil(HealthMath.periodSummary([:], period: .year, now: now, calendar: calendar).delta)
+    }
     func testTotalsUntilProratesCurrentHourAndSkipsDaysWithoutData() {
         let day = date("2026-10-08T00:00:00"), empty = date("2026-10-07T00:00:00")
         let hourly = [date("2026-10-08T07:00:00"): 10.0, date("2026-10-08T14:00:00"): 30, date("2026-10-08T20:00:00"): 50]

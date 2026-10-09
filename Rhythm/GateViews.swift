@@ -240,18 +240,30 @@ struct GateSettingsSection: View {
             Stepper("遊び \(draft.playMinutes)分", value: $draft.playMinutes, in: GateSettings.minuteRange)
             Stepper("なんとなく \(draft.idleMinutes)分", value: $draft.idleMinutes, in: GateSettings.minuteRange)
             Stepper("遊び予算 1日\(draft.dailyPlayBudget)分", value: $draft.dailyPlayBudget, in: GateSettings.budgetRange, step: 5)
+            NavigationLink { GateHoursView() } label: {
+                LabeledContent("ゲートを強める時間帯", value: gate.settings.strongHoursText)
+            }
             Button("解除時間を保存") {
-                do { try gate.saveSettings(draft); saved = true } catch { saved = false; gate.message = error.localizedDescription }
-            }.disabled(draft == gate.settings || gate.loadError != nil)
+                // 時間帯は別の画面で保存するので、ここでは今の値を引き継ぐ。
+                var next = draft
+                next.strongHours = gate.settings.strongHours
+                do { try gate.saveSettings(next); saved = true } catch { saved = false; gate.message = error.localizedDescription }
+            }.disabled(draftUnchanged || gate.loadError != nil)
             if saved { Text("保存しました").font(.caption).foregroundStyle(Palette.green) }
             if let error = gate.loadError { Text(error).font(.caption).foregroundStyle(.red) }
             if let message = gate.message { Text(message).font(.caption) }
             if let authMessage { Text(authMessage).font(.caption).foregroundStyle(.red) }
         } header: { Text("開く前に、ひと呼吸") } footer: {
-            Text("シールドの「理由を選んで開く」は通知でRhythmを開きます。通知を許可してください。待機は同じ日の遊び・なんとなくの回数に応じて5秒ずつ延び（最大60秒）、22時〜翌9時は2倍です。記録はこのiPhoneの中にだけ保存し、外部へは送りません。")
+            Text("シールドの「理由を選んで開く」は通知でRhythmを開きます。通知を許可してください。待機は同じ日の遊び・なんとなくの回数に応じて5秒ずつ延び（最大60秒）、ゲートを強める時間帯は2倍です。記録はこのiPhoneの中にだけ保存し、外部へは送りません。")
         }
         .onAppear { draft = gate.settings }
         .onChange(of: draft) { _, _ in saved = false }
+    }
+
+    private var draftUnchanged: Bool {
+        var current = draft
+        current.strongHours = gate.settings.strongHours
+        return current == gate.settings
     }
 
     @ViewBuilder private var disableControls: some View {
@@ -292,7 +304,7 @@ struct GateReviewCard: View {
         let days = HealthMath.periodDays(period)
         let summary = GateMath.summary(gate.events, days: days)
         Surface {
-            SectionLabel(title: "ひと呼吸", detail: "昨日までの\(period.label)")
+            SectionLabel(title: "ひと呼吸", detail: "昨日まで\(period.dayCount)日")
             if gate.events.isEmpty {
                 Text(gate.isEnabled ? "まだ記録がありません。" : "設定から「開く前に、ひと呼吸」をオンにすると、ここに記録が出ます。")
                     .font(.subheadline).foregroundStyle(Palette.secondary)
@@ -339,5 +351,55 @@ struct GateReviewCard: View {
             Text("記録はRhythmの監視で残したもので、Appleの保持期間に左右されません。iPhoneのロック中に越えた分は残らないことがあります。")
                 .font(.caption).foregroundStyle(Palette.secondary)
         }
+    }
+}
+
+// MARK: ゲートを強める時間帯（P1）
+
+/// 待機を2倍にする時を1時間単位で選ぶ。スクリーンタイム詳細の濃淡表を見て決める。
+struct GateHoursView: View {
+    @EnvironmentObject private var gate: GateStore
+    @Environment(\.dismiss) private var dismiss
+    @State private var hours: Set<Int> = []
+    @State private var error: String?
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 6), count: 6)
+
+    var body: some View {
+        Form {
+            Section {
+                LazyVGrid(columns: columns, spacing: 6) {
+                    ForEach(0..<24, id: \.self) { hour in
+                        let on = hours.contains(hour)
+                        Button {
+                            if on { hours.remove(hour) } else { hours.insert(hour) }
+                        } label: {
+                            Text("\(hour)時").font(.footnote.weight(on ? .semibold : .regular)).frame(maxWidth: .infinity, minHeight: 34)
+                                .foregroundStyle(on ? Color.white : Palette.ink)
+                                .background(on ? Palette.vermilion : Palette.background, in: RoundedRectangle(cornerRadius: 8))
+                        }.buttonStyle(.plain)
+                            .accessibilityLabel("\(hour)時から1時間")
+                            .accessibilityValue(on ? "強める" : "通常")
+                    }
+                }.padding(.vertical, 4)
+                LabeledContent("選んだ時間帯", value: GateSettings(strongHours: hours).strongHoursText)
+            } footer: {
+                Text("選んだ時間に遊び・なんとなくで開くと、待機が2倍になります（最大60秒）。仕事・情報収集は待ちません。")
+            }
+            Section {
+                Button("夜22時〜朝9時に戻す") { hours = GateSettings.defaultStrongHours }
+                Button("すべて外す", role: .destructive) { hours = [] }
+            }
+            if let error { Section { Text(error).foregroundStyle(.red) } }
+        }.navigationTitle("ゲートを強める時間帯").navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("保存") {
+                        var next = gate.settings
+                        next.strongHours = hours
+                        do { try gate.saveSettings(next); dismiss() } catch { self.error = error.localizedDescription }
+                    }.disabled(hours == gate.settings.strongHours || gate.loadError != nil)
+                }
+            }
+            .onAppear { hours = gate.settings.strongHours }
     }
 }

@@ -38,12 +38,16 @@ struct GateSettings: Codable, Equatable, Sendable {
     var playMinutes = 10
     var idleMinutes = 5
     var dailyPlayBudget = 30
+    /// ゲートを強める（待機を2倍にする）時。0〜23時。初期値は夜22時〜朝9時（v1.1の固定値）。
+    var strongHours: Set<Int> = Self.defaultStrongHours
 
     static let minuteRange = 1...60
     static let budgetRange = 0...240
+    static let defaultStrongHours = Set(Array(22...23) + Array(0...8))
 
     var isValid: Bool {
         [workMinutes, playMinutes, idleMinutes].allSatisfy(Self.minuteRange.contains) && Self.budgetRange.contains(dailyPlayBudget)
+            && strongHours.allSatisfy((0...23).contains)
     }
 
     func minutes(for purpose: GatePurpose) -> Int {
@@ -52,6 +56,35 @@ struct GateSettings: Codable, Equatable, Sendable {
         case .play: return playMinutes
         case .idle: return idleMinutes
         }
+    }
+}
+
+extension GateSettings {
+    /// v1.1の設定ファイルには strongHours がないので、ないときは初期値を使う。
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        workMinutes = try container.decode(Int.self, forKey: .workMinutes)
+        playMinutes = try container.decode(Int.self, forKey: .playMinutes)
+        idleMinutes = try container.decode(Int.self, forKey: .idleMinutes)
+        dailyPlayBudget = try container.decode(Int.self, forKey: .dailyPlayBudget)
+        strongHours = try container.decodeIfPresent(Set<Int>.self, forKey: .strongHours) ?? Self.defaultStrongHours
+    }
+
+    /// 「22〜24時・0〜9時」のような表示。
+    var strongHoursText: String {
+        guard !strongHours.isEmpty else { return "なし" }
+        guard strongHours.count < 24 else { return "終日" }
+        let sorted = strongHours.sorted()
+        var ranges: [(Int, Int)] = []
+        for hour in sorted {
+            if let last = ranges.last, last.1 == hour { ranges[ranges.count - 1].1 = hour + 1 } else { ranges.append((hour, hour + 1)) }
+        }
+        // 24時をまたぐ範囲（22〜24時と0〜9時）はつなげて「22〜翌9時」にする。
+        if ranges.count > 1, ranges.first!.0 == 0, ranges.last!.1 == 24 {
+            let first = ranges.removeFirst()
+            ranges[ranges.count - 1].1 = first.1 + 24
+        }
+        return ranges.map { $0.1 > 24 ? "\($0.0)〜翌\($0.1 - 24)時" : "\($0.0)〜\($0.1)時" }.joined(separator: "・")
     }
 }
 
@@ -109,20 +142,19 @@ enum GateMath {
         budgetUsed(on: day, events, calendar: calendar) >= settings.dailyPlayBudget
     }
 
-    /// 夜（22:00〜翌4:00）と朝（4:00〜9:00）は待機を2倍にする。
-    static func isQuietHours(_ date: Date, calendar: Calendar = .current) -> Bool {
-        let hour = calendar.component(.hour, from: date)
-        return hour >= 22 || hour < 9
+    /// 設定でゲートを強めた時（初期値は夜22時〜朝9時）は待機を2倍にする。
+    static func isStrongHours(_ date: Date, settings: GateSettings, calendar: Calendar = .current) -> Bool {
+        settings.strongHours.contains(calendar.component(.hour, from: date))
     }
 
-    /// 待機秒数 = min(5 + n × 5, 60)。夜と朝は2倍（上限60）。予算超過中は60秒に固定。仕事は待機しない。
+    /// 待機秒数 = min(5 + n × 5, 60)。ゲートを強めた時は2倍（上限60）。予算超過中は60秒に固定。仕事は待機しない。
     static func waitSeconds(for purpose: GatePurpose, at date: Date, events: [GateEvent], settings: GateSettings,
                             calendar: Calendar = .current) -> Int {
         guard purpose.countsTowardBudget else { return 0 }
         if isOverBudget(on: date, events, settings: settings, calendar: calendar) { return maxWaitSeconds }
         let n = casualChoices(on: date, events, calendar: calendar)
         let base = min(5 + n * 5, maxWaitSeconds)
-        return isQuietHours(date, calendar: calendar) ? min(base * 2, maxWaitSeconds) : base
+        return isStrongHours(date, settings: settings, calendar: calendar) ? min(base * 2, maxWaitSeconds) : base
     }
 
     static func emergencyAvailable(on day: Date, _ events: [GateEvent], calendar: Calendar = .current) -> Bool {

@@ -123,4 +123,20 @@ final class GateMathTests: XCTestCase {
         XCTAssertEqual(average?.stayedAway, 0.5)
         XCTAssertNil(GateMath.dailyAverages(days, [], calendar: calendar))
     }
+
+    func testStrongHoursAreConfigurableAndOldSettingsDecode() throws {
+        var settings = GateSettings()
+        let morning = date("2026-10-07T07:00:00"), evening = date("2026-10-07T21:30:00")
+        XCTAssertEqual(GateMath.waitSeconds(for: .play, at: morning, events: [], settings: settings, calendar: calendar), 10)
+        XCTAssertEqual(GateMath.waitSeconds(for: .play, at: evening, events: [], settings: settings, calendar: calendar), 5)
+        settings.strongHours = [21]
+        XCTAssertEqual(GateMath.waitSeconds(for: .play, at: evening, events: [], settings: settings, calendar: calendar), 10)
+        XCTAssertEqual(GateMath.waitSeconds(for: .play, at: morning, events: [], settings: settings, calendar: calendar), 5)
+        let old = #"{"workMinutes":15,"playMinutes":10,"idleMinutes":5,"dailyPlayBudget":30}"#.data(using: .utf8)!
+        XCTAssertEqual(try JSONDecoder().decode(GateSettings.self, from: old).strongHours, GateSettings.defaultStrongHours)
+        XCTAssertEqual(GateSettings().strongHoursText, "22〜翌9時")
+        settings.strongHours = [4, 5, 21, 22, 23]
+        XCTAssertEqual(settings.strongHoursText, "4〜6時・21〜24時")
+        XCTAssertFalse(GateSettings(strongHours: [24]).isValid)
+    }
 }

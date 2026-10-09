@@ -2,118 +2,92 @@ import SwiftUI
 import Charts
 import DeviceActivity
 
-struct ScreenReportCard: View {
-    @EnvironmentObject private var screen: ScreenTimeStore
-    @EnvironmentObject private var journal: JournalStore
-    @ScaledMetric(relativeTo: .body) private var reportHeight = 380.0
-    @ScaledMetric(relativeTo: .body) private var longHeight = 470.0
-    @ScaledMetric(relativeTo: .body) private var todayHeight = 140.0
-    var period: ReviewPeriod?
-    var sns = false
-    private var context: DeviceActivityReport.Context { period?.reportContext(sns: sns) ?? .rhythmToday }
-    private var height: Double {
-        guard let period else { return todayHeight }
-        return period.isLong ? longHeight : reportHeight
-    }
-    var body: some View {
-        Surface {
-            Label(sns ? "SNSの時間" : "スクリーンタイム", systemImage: sns ? "bubble.left.and.bubble.right" : "iphone").font(.headline)
-            if screen.isAuthorized && sns && !screen.hasSNSSelection {
-                Text("SNSだけの時間も、見えるように。").font(.subheadline)
-                Text("設定タブの「アプリの分類」でSNSのアプリを選ぶと、ここに表示します。")
-                    .font(.footnote).foregroundStyle(Palette.secondary)
-            } else if screen.isAuthorized {
-                DeviceActivityReport(context, filter: period.map { screen.filter(period: $0, sns: sns) } ?? screen.filter(days: nil))
-                    .id("\(context.rawValue)-\(screen.refreshID)")
-                    .frame(height: height)
-                if !sns {
-                    Text("個人目標 \(HealthMath.duration(journal.goals.screenMinutes)) / 日")
-                        .font(.caption).foregroundStyle(Palette.secondary)
-                }
-                Text(sns ? "設定で選んだアプリとWebサイトの合計。値はAppleの専用レポート内だけで集計します。"
-                    : "Apple提供のiPhone利用時間。表示に時間がかかる場合は更新してください。")
-                    .font(.caption2).foregroundStyle(Palette.secondary)
-            } else {
-                Text("スマホとの距離も、見えるように。").font(.subheadline)
-                Text("接続するとiPhoneの利用時間を自動で表示します。")
-                    .font(.footnote).foregroundStyle(Palette.secondary)
-                Button("スクリーンタイムに接続") { Task { await screen.connect() } }.buttonStyle(.bordered)
-            }
-            if let message = screen.message { Notice(text: message) }
+/// 振り返りの5指標。SNSと合計は表示拡張が描き、睡眠・体重・歩数は本体が描く。
+enum ReviewMetric: String, CaseIterable, Identifiable {
+    case sns, total, sleep, weight, steps
+    var id: String { rawValue }
+    var label: String {
+        switch self {
+        case .sns: return "SNS"
+        case .total: return "スクリーンタイム"
+        case .sleep: return "睡眠"
+        case .weight: return "体重"
+        case .steps: return "歩数"
         }
     }
-}
-
-enum HealthMetric: String, CaseIterable {
-    case sleep = "睡眠", weight = "体重"
-    var unit: String { self == .weight ? "kg" : "時間" }
-    func value(_ day: DailyHealth) -> Double? {
-        self == .weight ? day.weight : day.sleepMinutes.map { Double($0) / 60 }
+    var screen: ScreenMetric? {
+        switch self {
+        case .sns: return .sns
+        case .total: return .total
+        default: return nil
+        }
     }
-}
+    var hasCalendar: Bool { self != .weight }
+    var color: Color { screen?.color ?? Palette.green }
 
-struct HealthPoint: Identifiable {
-    var date: Date
-    var value: Double
-    var segment: Int
-    var id: Date { date }
-}
-
-struct ReviewData {
-    var current: [DailyHealth]
-    var previous: [DailyHealth]
-    var sleep: [Date: Double]
-    var weight: [Date: Double]
-    func values(_ metric: HealthMetric) -> [Date: Double] { metric == .weight ? weight : sleep }
+    func format(_ value: Double) -> String {
+        switch self {
+        case .weight: return String(format: "%.1fkg", value)
+        case .steps: return value.formatted(.number.precision(.fractionLength(0))) + "歩"
+        default: return HealthMath.shortDuration(value)
+        }
+    }
+    func shortFormat(_ value: Double) -> String {
+        switch self {
+        case .weight: return String(format: "%.1f", value)
+        case .steps: return String(format: "%.1fk", value / 1000)
+        default: return HealthMath.shortDuration(value)
+        }
+    }
+    /// 変化なしとみなす幅。
+    var threshold: Double {
+        switch self {
+        case .weight: return 0.05
+        case .steps: return 50
+        default: return 1
+        }
+    }
 }
 
 struct ReviewView: View {
     @EnvironmentObject private var journal: JournalStore
     @EnvironmentObject private var health: HealthStore
-    @State private var period: ReviewPeriod = .week
-    @State private var metric: HealthMetric = .sleep
+    @EnvironmentObject private var screen: ScreenTimeStore
+    @State private var period: ReviewPeriod = .month
+    @State private var metric: ReviewMetric = .sns
+    @State private var showsCalendar = false
+    @State private var calendarOffset = 0
+    @ScaledMetric(relativeTo: .body) private var chartHeight = 310.0
+    @ScaledMetric(relativeTo: .body) private var calendarHeight = 360.0
 
-    private func makeData() -> ReviewData {
-        // Covers the chosen period, its comparison and the monthly view (incl. the same month last year).
-        let start = min(HealthMath.fetchStart(period), HealthMath.fetchStart(.monthly))
-        let all = HealthMath.resolve(days: HealthMath.completedDays(in: DateInterval(start: start, end: .now)),
-            weights: health.weights, sleep: health.sleep, manual: journal.records)
-        let byDay = Dictionary(all.map { ($0.day, $0) }, uniquingKeysWith: { _, last in last })
-        func table(_ metric: HealthMetric) -> [Date: Double] {
-            Dictionary(all.compactMap { row in metric.value(row).map { (row.day, $0) } }, uniquingKeysWith: { _, last in last })
+    /// 本体で扱う指標の日ごとの値（記録のない日は含めない）。
+    private func values(_ metric: ReviewMetric) -> [Date: Double] {
+        switch metric {
+        case .steps: return health.stepsDaily
+        case .sleep, .weight:
+            let start = min(HealthMath.fetchStart(period), HealthMath.calendarWeeks(offset: calendarOffset).first ?? .now)
+            let rows = HealthMath.resolve(days: HealthMath.completedDays(in: DateInterval(start: start, end: .now)),
+                weights: health.weights, sleep: health.sleep, manual: journal.records)
+            var result: [Date: Double] = [:]
+            for row in rows {
+                if metric == .sleep, let minutes = row.sleepMinutes { result[row.day] = Double(minutes) }
+                if metric == .weight, let weight = row.weight { result[row.day] = weight }
+            }
+            return result
+        default: return [:]
         }
-        return ReviewData(current: HealthMath.periodDays(period).compactMap { byDay[$0] },
-            previous: HealthMath.comparisonDays(period).compactMap { byDay[$0] },
-            sleep: table(.sleep), weight: table(.weight))
     }
-    private func average(_ metric: HealthMetric, rows: [DailyHealth]) -> Double? {
-        HealthMath.average(rows.map { metric.value($0) })
-    }
-    private func insight(_ current: [DailyHealth]) -> String {
-        let sleepCount = current.filter { $0.sleepMinutes != nil }.count
-        guard sleepCount >= 3, let avg = average(.sleep, rows: current) else {
-            return "記録がたまると、期間の平均や変化を振り返れます。まずは3日分、睡眠を残してみましょう。"
-        }
-        let target = Double(journal.goals.sleepMinutes) / 60
-        let difference = Int((abs(avg - target) * 60).rounded())
-        if avg < target {
-            return "記録のある\(sleepCount)日間の睡眠は、個人目標より平均\(difference)分短めでした。眠りが短かった日のメモを見返してみましょう。"
-        }
-        return "記録のある\(sleepCount)日間の平均睡眠は、個人目標に届いています。調子がよかった日の過ごし方をメモに残しておきましょう。"
-    }
+
     private var rangeText: String {
         let days = HealthMath.periodDays(period)
         guard let first = days.first, let last = days.last else { return "" }
-        let style: Date.FormatStyle = period == .week || period == .month ? .dateTime.month().day() : .dateTime.year().month().day()
-        return "\(first.formatted(style)) 〜 \(last.formatted(style)) · 昨日まで" + (period == .monthly ? "（今月は途中）" : "")
+        let style: Date.FormatStyle = period == .year ? .dateTime.year().month().day() : .dateTime.month().day()
+        return "\(first.formatted(style)) 〜 \(last.formatted(style)) · 昨日まで · \(period.comparisonLabel)と比較"
     }
 
     var body: some View {
-        let data = makeData()
-        let count = HealthMath.periodDays(period).count
         ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                Text("少し離れて、見えてくる。").font(.subheadline).foregroundStyle(Palette.secondary)
+            VStack(alignment: .leading, spacing: 16) {
                 Picker("期間", selection: $period) {
                     ForEach(ReviewPeriod.allCases) { Text($0.label).tag($0) }
                 }.pickerStyle(.segmented)
@@ -121,316 +95,324 @@ struct ReviewView: View {
                     Text(rangeText).font(.caption).foregroundStyle(Palette.secondary)
                     if health.isLoading { Spacer(); ProgressView().controlSize(.small) }
                 }
-                if period == .monthly, let last = HealthMath.recentMonths(count: 2).first {
-                    MonthSummaryCard(title: "睡眠", unit: "時間", comparison: HealthMath.monthComparison(data.sleep, month: last))
-                    MonthSummaryCard(title: "体重", unit: "kg", comparison: HealthMath.monthComparison(data.weight, month: last))
-                } else {
-                    ForEach(HealthMetric.allCases, id: \.self) { type in
-                        Surface {
-                            SectionLabel(title: "平均\(type.rawValue)", detail: "記録 \(data.current.filter { type.value($0) != nil }.count)/\(count)日")
-                            Text(average(type, rows: data.current).map { String(format: "%.1f %@", $0, type.unit) } ?? "まだ記録がありません")
-                                .font(.system(.title, design: .rounded).weight(.semibold))
-                            if let now = average(type, rows: data.current), let before = average(type, rows: data.previous) {
-                                Text(String(format: "%@より %+.1f %@", period.comparisonLabel, now - before, type.unit))
-                                    .font(.subheadline).foregroundStyle(Palette.green)
-                                Text("比較期間の記録 \(data.previous.filter { type.value($0) != nil }.count)/\(data.previous.count)日")
-                                    .font(.caption).foregroundStyle(Palette.secondary)
-                            } else { Text("比較する記録がそろうと変化を表示します").font(.caption).foregroundStyle(Palette.secondary) }
-                        }
-                    }
-                }
-                Surface {
-                    SectionLabel(title: period.isLong ? "長い目で見た変化" : "日ごとの変化")
-                    Picker("表示する記録", selection: $metric) {
-                        ForEach(HealthMetric.allCases, id: \.self) { Text($0.rawValue).tag($0) }
-                    }.pickerStyle(.segmented)
-                    if period.isLong {
-                        LongTrend(period: period, metric: metric, days: HealthMath.periodDays(period),
-                            values: data.values(metric), target: journal.goals.sleepMinutes)
-                    } else {
-                        HealthTrend(rows: data.current, metric: metric, target: journal.goals.sleepMinutes)
-                    }
-                    if period == .monthly {
-                        MonthlyTable(months: HealthMath.recentMonths(), sleep: data.sleep, weight: data.weight)
-                    }
-                }
-                SleepCalendarCard(sleep: data.sleep, target: journal.goals.sleepMinutes)
-                Group {
-                    ScreenReportCard(period: period)
-                    ScreenReportCard(period: period, sns: true)
-                    ScreenCalendarCard()
-                    GateReviewCard(period: period)
-                }
-                Surface {
-                    Label("数字から、ひとつ気づく", systemImage: "leaf").font(.headline)
-                    Text(insight(data.current)).font(.subheadline).lineSpacing(5)
-                    Text("記録日数が違う期間の平均は、単純には比較できません。健康状態の診断ではありません。")
-                        .font(.caption).foregroundStyle(Palette.secondary)
-                }
-                Group {
-                    Text("出典：Appleヘルスケア・手入力。欠測日は平均から除外。")
-                        .font(.caption).foregroundStyle(Palette.secondary)
-                    if let sync = health.lastSync { Text("取得 \(sync.formatted(date: .abbreviated, time: .shortened))").font(.caption).foregroundStyle(Palette.secondary) }
-                    if let message = health.message { Notice(text: message) }
-                }
+                topCard
+                metricList
+                GateReviewCard(period: period)
+                Text("出典：Appleヘルスケア・手入力・Appleスクリーンタイム。記録のない日は平均から除き、0扱いしません。")
+                    .font(.caption).foregroundStyle(Palette.secondary)
+                if let message = health.message { Notice(text: message) }
             }.padding(20).frame(maxWidth: 620).frame(maxWidth: .infinity)
         }.background(Palette.background).navigationTitle("振り返り")
             .task(id: period) { await health.ensureLoaded(period) }
-    }
-}
-
-struct HealthTrend: View {
-    var rows: [DailyHealth]
-    var metric: HealthMetric
-    var target: Int
-    private var points: [HealthPoint] {
-        var segment = 0
-        return rows.compactMap { row in
-            guard let value = metric.value(row) else { segment += 1; return nil }
-            return HealthPoint(date: row.day, value: value, segment: segment)
-        }
-    }
-    private var bounds: ClosedRange<Double> {
-        let values = points.map(\.value)
-        if metric == .weight { return max(0, (values.min() ?? 50) - 1)...((values.max() ?? 80) + 1) }
-        return 0...max(10, max((values.max() ?? 0) + 1, Double(target) / 60 + 1))
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("\(metric.rawValue)の推移（\(metric.unit)）").font(.caption).foregroundStyle(Palette.secondary)
-            if points.isEmpty {
-                ContentUnavailableView("まだ記録がありません", systemImage: "chart.xyaxis.line",
-                    description: Text("ヘルスケアを接続するか、記録を入力してください。"))
-            } else {
-                Chart {
-                    ForEach(points) { point in
-                        LineMark(x: .value("日付", point.date), y: .value(metric.rawValue, point.value),
-                            series: .value("連続区間", point.segment)).foregroundStyle(Palette.green)
-                        PointMark(x: .value("日付", point.date), y: .value(metric.rawValue, point.value))
-                            .foregroundStyle(Palette.green).symbolSize(24)
-                    }
-                    if metric == .sleep {
-                        RuleMark(y: .value("個人目標", Double(target) / 60))
-                            .foregroundStyle(.gray).lineStyle(StrokeStyle(dash: [4, 4]))
-                    }
-                }.frame(height: 180).chartYScale(domain: bounds)
-                    .chartXScale(domain: rows.first!.day...rows.last!.day)
-                    .chartYAxis { AxisMarks(position: .leading) }
-                    .chartXAxis { AxisMarks(values: .stride(by: .day, count: rows.count > 7 ? 7 : 2)) { _ in
-                        AxisValueLabel(format: .dateTime.month().day())
-                    } }
-                    .accessibilityLabel("\(metric.rawValue)の日別推移。下の記録一覧でも値を確認できます。")
-                Text(metric == .weight ? "縦軸は0始まりではありません。" : "破線：自分で設定した睡眠目標")
-                    .font(.caption2).foregroundStyle(Palette.secondary)
-                DisclosureGroup("日別の数値・出典を見る") {
-                    ForEach(rows) { row in
-                        HStack {
-                            Text(row.day.formatted(.dateTime.month().day()))
-                            Spacer()
-                            Text(metric.value(row).map { String(format: "%.1f %@", $0, metric.unit) } ?? "未記録")
-                            Text(metric.value(row) == nil ? "" : (metric == .weight ? row.weightSource : row.sleepSource))
-                                .foregroundStyle(Palette.secondary)
-                        }.font(.caption).padding(.vertical, 4)
-                    }
-                }.font(.footnote)
+            .onChange(of: calendarOffset) { _, offset in
+                if let first = HealthMath.calendarWeeks(offset: offset).first { Task { await health.ensureLoaded(from: first) } }
             }
-        }
     }
-}
 
-struct MonthSummaryCard: View {
-    var title: String
-    var unit: String
-    var comparison: MonthComparison
-    private func format(_ value: Double) -> String { String(format: "%.1f %@", value, unit) }
-    var body: some View {
+    // MARK: 上：選んだ指標のグラフ1枚
+
+    private var topCard: some View {
         Surface {
-            SectionLabel(title: "\(comparison.month.start.formatted(.dateTime.month()))の平均\(title)", detail: "記録 \(comparison.recordedDays)日")
-            Text(comparison.average.map(format) ?? "まだ記録がありません").font(.system(.title, design: .rounded).weight(.semibold))
-            row("先月比", before: comparison.previousMonth, count: comparison.previousMonthRecorded)
-            row("前年同月比", before: comparison.lastYear, count: comparison.lastYearRecorded)
-        }
-    }
-    @ViewBuilder private func row(_ label: String, before: Double?, count: Int) -> some View {
-        if let now = comparison.average, let before {
-            Text(String(format: "%@ %+.1f %@（比較期間の記録 %d日）", label, now - before, unit, count))
-                .font(.caption).foregroundStyle(Palette.green)
-        } else { Text("\(label)：比較する記録がありません").font(.caption).foregroundStyle(Palette.secondary) }
-    }
-}
-
-struct LongTrend: View {
-    var period: ReviewPeriod
-    var metric: HealthMetric
-    var days: [Date]
-    var values: [Date: Double]
-    var target: Int
-    private var unit: BucketUnit { period == .quarter ? .week : .month }
-    private var movingPoints: [HealthPoint] {
-        let average = HealthMath.movingAverage(values, on: days)
-        var segment = 0
-        return days.compactMap { day in
-            guard let value = average[day] else { segment += 1; return nil }
-            return HealthPoint(date: day, value: value, segment: segment)
-        }
-    }
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            if !days.contains(where: { values[$0] != nil }) {
-                ContentUnavailableView("この期間の記録がありません", systemImage: "chart.xyaxis.line",
-                    description: Text("ヘルスケアを接続するか、記録を入力してください。"))
-            } else if metric == .weight { weightChart } else { sleepChart }
-        }
-    }
-
-    private var weightChart: some View {
-        let recorded = days.filter { values[$0] != nil }
-        let all = recorded.compactMap { values[$0] }
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("体重の推移（kg）").font(.caption).foregroundStyle(Palette.secondary)
-            Chart {
-                ForEach(recorded, id: \.self) { day in
-                    PointMark(x: .value("日付", day), y: .value("体重", values[day] ?? 0))
-                        .foregroundStyle(Palette.green.opacity(0.25)).symbolSize(12)
+            HStack {
+                Circle().fill(metric.color).frame(width: 9, height: 9)
+                Text("\(metric.label) · 1日平均").font(.subheadline.weight(.medium))
+                Spacer()
+                if metric.hasCalendar {
+                    Picker("表示", selection: $showsCalendar) {
+                        Text("グラフ").tag(false)
+                        Text("カレンダー").tag(true)
+                    }.pickerStyle(.segmented).frame(width: 170)
                 }
-                ForEach(movingPoints) { point in
-                    LineMark(x: .value("日付", point.date), y: .value("7日移動平均", point.value),
-                        series: .value("連続区間", point.segment)).foregroundStyle(Palette.green).lineStyle(StrokeStyle(lineWidth: 2.5))
-                }
-            }.frame(height: 190)
-                .chartYScale(domain: max(0, (all.min() ?? 50) - 1)...((all.max() ?? 80) + 1))
-                .chartXScale(domain: days.first!...days.last!)
-                .chartYAxis { AxisMarks(position: .leading) }
-                .chartXAxis { AxisMarks(values: .stride(by: .month, count: period == .quarter ? 1 : 2)) { _ in
-                    AxisValueLabel(format: .dateTime.month())
-                } }
-                .accessibilityLabel("体重の7日移動平均と日々の値。月別の一覧でも値を確認できます。")
-            Text("線：7日移動平均（記録3件未満の日は表示なし）· 薄い点：日々の値 · 縦軸は0始まりではありません。")
-                .font(.caption2).foregroundStyle(Palette.secondary)
-        }
-    }
-
-    private var sleepChart: some View {
-        let bars = HealthMath.buckets(values, days: days, unit: unit).filter { $0.average != nil }
-        let weekly = unit == .week
-        return VStack(alignment: .leading, spacing: 8) {
-            Text("睡眠の\(weekly ? "週" : "月")平均（時間）").font(.caption).foregroundStyle(Palette.secondary)
-            Chart {
-                ForEach(bars) { bucket in
-                    BarMark(x: .value(weekly ? "週" : "月", bucket.start, unit: weekly ? .weekOfYear : .month),
-                        y: .value("睡眠", bucket.average ?? 0))
-                        .foregroundStyle(Palette.green.opacity(bucket.isPartial ? 0.4 : 1))
-                        .annotation(position: .top) {
-                            Text("\(bucket.recordedDays)日").font(.system(size: 8)).foregroundStyle(Palette.secondary)
-                        }
-                }
-                RuleMark(y: .value("個人目標", Double(target) / 60))
-                    .foregroundStyle(.gray).lineStyle(StrokeStyle(dash: [4, 4]))
-            }.frame(height: 190)
-                .chartYScale(domain: 0...max(10, Double(target) / 60 + 1))
-                .chartYAxis { AxisMarks(position: .leading) }
-                .chartXAxis { AxisMarks(values: .stride(by: weekly ? .weekOfYear : .month, count: 2)) { _ in
-                    AxisValueLabel(format: weekly ? Date.FormatStyle.dateTime.month().day() : Date.FormatStyle.dateTime.month())
-                } }
-                .accessibilityLabel("睡眠の\(weekly ? "週" : "月")平均。棒の上は記録日数。")
-            Text("棒の上は記録日数 · 薄い棒は期間の途中 · 破線：自分で設定した睡眠目標")
-                .font(.caption2).foregroundStyle(Palette.secondary)
-        }
-    }
-}
-
-struct MonthlyTable: View {
-    var months: [DateInterval]
-    var sleep: [Date: Double]
-    var weight: [Date: Double]
-    private func summary(_ values: [Date: Double], _ days: [Date]) -> (average: Double?, count: Int) {
-        let present = days.compactMap { values[$0] }
-        return (HealthMath.average(present.map(Optional.some)), present.count)
-    }
-    private func text(_ value: Double?, _ format: String) -> String { value.map { String(format: format, $0) } ?? "未記録" }
-    var body: some View {
-        DisclosureGroup("月別の数値を見る") {
-            ForEach(months.reversed(), id: \.start) { month in
-                let days = HealthMath.completedDays(in: month)
-                let s = summary(sleep, days), w = summary(weight, days)
-                VStack(alignment: .leading, spacing: 2) {
-                    HStack {
-                        Text(month.start.formatted(.dateTime.year().month())).fontWeight(.medium)
-                        Spacer()
-                        Text("睡眠の記録 \(s.count)/\(days.count)日").foregroundStyle(Palette.secondary)
-                    }
-                    Text("睡眠 \(text(s.average, "%.1f時間")) · 体重 \(text(w.average, "%.1fkg"))")
-                }.font(.caption).padding(.vertical, 4)
             }
-        }.font(.footnote)
+            if showsCalendar && metric.hasCalendar { calendarNavigator }
+            topContent
+        }
     }
-}
 
-struct MonthStepper: View {
-    @Binding var index: Int
-    var months: [DateInterval]
-    var body: some View {
-        HStack {
-            Button { index -= 1 } label: { Image(systemName: "chevron.left") }
-                .disabled(index <= 0).accessibilityLabel("前の月")
+    @ViewBuilder private var topContent: some View {
+        let calendarMode = showsCalendar && metric.hasCalendar
+        if let screenMetric = metric.screen {
+            if !screen.isAuthorized {
+                Text("スクリーンタイムに接続すると表示します。").font(.subheadline)
+                Button("スクリーンタイムに接続") { Task { await screen.connect() } }.buttonStyle(.bordered)
+            } else if calendarMode {
+                DeviceActivityReport(.rhythmReviewCalendar(screenMetric), filter: screen.calendarFilter(offset: calendarOffset))
+                    .id("calendar-\(screenMetric.rawValue)-\(calendarOffset)-\(screen.refreshID)")
+                    .frame(height: calendarHeight)
+            } else {
+                DeviceActivityReport(.rhythmReviewChart(screenMetric, period), filter: screen.reviewFilter(period))
+                    .id("chart-\(screenMetric.rawValue)-\(period.rawValue)-\(screen.refreshID)")
+                    .frame(height: chartHeight)
+            }
+        } else if calendarMode {
+            HostCalendar(metric: metric, values: values(metric), offset: calendarOffset)
+        } else {
+            HostChart(metric: metric, period: period, values: values(metric))
+        }
+    }
+
+    private var calendarNavigator: some View {
+        let days = HealthMath.calendarWeeks(offset: calendarOffset)
+        let first: String = days.first?.formatted(.dateTime.month().day()) ?? ""
+        let last: String = days.last?.formatted(.dateTime.month().day()) ?? ""
+        return HStack {
+            Button { calendarOffset += 1 } label: { Image(systemName: "chevron.left") }
+                .disabled(calendarOffset >= 20).accessibilityLabel("前の5週間")
             Spacer()
-            Text(months[index].start.formatted(.dateTime.year().month())).font(.subheadline.weight(.medium))
+            Text(first + " 〜 " + last).font(.subheadline.weight(.medium))
             Spacer()
-            Button { index += 1 } label: { Image(systemName: "chevron.right") }
-                .disabled(index >= months.count - 1).accessibilityLabel("次の月")
+            Button { calendarOffset -= 1 } label: { Image(systemName: "chevron.right") }
+                .disabled(calendarOffset == 0).accessibilityLabel("次の5週間")
         }.buttonStyle(.borderless)
     }
-}
 
-struct SleepCalendarCard: View {
-    @EnvironmentObject private var health: HealthStore
-    var sleep: [Date: Double]
-    var target: Int
-    @State private var index = 11
-    private let months = HealthMath.recentMonths()
-    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
-    var body: some View {
-        let month = months[index]
-        let maximum = Double(target) / 60 * 1.2
-        let recorded = HealthMath.completedDays(in: month).filter { sleep[$0] != nil }.count
-        let symbols = Calendar.current.veryShortWeekdaySymbols
-        let first = Calendar.current.firstWeekday - 1
-        Surface {
-            SectionLabel(title: "睡眠カレンダー", detail: "記録 \(recorded)日")
-            MonthStepper(index: $index, months: months)
-            LazyVGrid(columns: columns, spacing: 4) {
-                ForEach(0..<7, id: \.self) { offset in
-                    Text(symbols[(first + offset) % 7]).font(.caption2).foregroundStyle(Palette.secondary)
-                }
-                ForEach(Array(HealthMath.calendarGrid(month: month).enumerated()), id: \.offset) { _, day in
-                    if let day {
-                        let hours: Double? = sleep[day]
-                        let value: String = hours.map { "睡眠" + HealthMath.duration(Int(($0 * 60).rounded())) } ?? "未記録"
-                        HeatCell(day: day, level: HealthMath.intensity(hours, maximum: maximum), detail: value)
-                    } else { Color.clear.frame(minHeight: 32) }
-                }
+    // MARK: 下：5指標の一覧。行をタップすると上が切り替わる
+
+    private var metricList: some View {
+        VStack(spacing: 0) {
+            if screen.isAuthorized {
+                DeviceActivityReport(.rhythmReviewRows(period), filter: screen.reviewFilter(period))
+                    .id("rows-\(period.rawValue)-\(screen.refreshID)")
+                    .frame(height: 130)
+                    .overlay { screenRowButtons }
             }
-            Text("濃いほど長い（個人目標の1.2倍で最も濃い）· 無色は未記録（0ではありません）")
-                .font(.caption2).foregroundStyle(Palette.secondary)
-        }.onChange(of: index) { _, _ in Task { await health.ensureLoaded(.monthly) } }
+            ForEach([ReviewMetric.sleep, .weight, .steps]) { item in
+                Button { select(item) } label: {
+                    HostMetricRow(metric: item, period: period, values: values(item), selected: metric == item)
+                }.buttonStyle(.plain)
+                Divider()
+            }
+        }.padding(.horizontal, 16).padding(.vertical, 4)
+            .background(Color.white, in: RoundedRectangle(cornerRadius: 22))
+    }
+
+    /// 表示拡張の上に透明なボタンを重ねて、SNS・合計の行のタップを本体で受け取る。
+    private var screenRowButtons: some View {
+        VStack(spacing: 0) {
+            ForEach([ReviewMetric.sns, .total]) { item in
+                Button { select(item) } label: {
+                    Rectangle().fill(metric == item ? Palette.green.opacity(0.06) : Color.clear).contentShape(Rectangle())
+                }.buttonStyle(.plain).frame(height: 65)
+                    .accessibilityLabel("\(item.label)を上のグラフに表示")
+            }
+        }
+    }
+
+    private func select(_ item: ReviewMetric) {
+        metric = item
+        if !item.hasCalendar { showsCalendar = false }
     }
 }
 
-struct ScreenCalendarCard: View {
-    @EnvironmentObject private var screen: ScreenTimeStore
-    @ScaledMetric(relativeTo: .body) private var height = 320.0
-    @State private var index = 11
-    private let months = HealthMath.recentMonths()
+// MARK: 本体側の指標（睡眠・体重・歩数）
+
+struct HostMetricRow: View {
+    var metric: ReviewMetric
+    var period: ReviewPeriod
+    var values: [Date: Double]
+    var selected: Bool
+
     var body: some View {
-        if screen.isAuthorized && screen.hasSNSSelection {
-            Surface {
-                SectionLabel(title: "SNSカレンダー")
-                MonthStepper(index: $index, months: months)
-                DeviceActivityReport(.rhythmSNSCalendar, filter: screen.calendarFilter(month: months[index], sns: true))
-                    .id("sns-calendar-\(index)-\(screen.refreshID)").frame(height: height)
-                Text("SNSの1日の合計を色の濃さで表示。値はAppleの専用レポート内だけで扱います。")
-                    .font(.caption2).foregroundStyle(Palette.secondary)
+        let summary = HealthMath.periodSummary(values, period: period)
+        let series = HealthMath.series(values, period: period).filter { $0.value != nil }
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 2) {
+                HStack(spacing: 5) {
+                    Circle().fill(metric.color).frame(width: 8, height: 8)
+                    Text(metric.label).font(.subheadline.weight(.semibold))
+                }
+                Text("1日平均 · 記録\(summary.recordedDays)/\(summary.totalDays)日").font(.caption2).foregroundStyle(Palette.secondary)
             }
+            Spacer(minLength: 4)
+            VStack(alignment: .trailing, spacing: 2) {
+                Text(summary.average.map(metric.format) ?? "—").font(.subheadline.weight(.semibold))
+                Text(deltaText(summary.delta)).font(.caption.weight(.medium)).foregroundStyle(Palette.secondary)
+            }
+            Chart {
+                ForEach(series) { point in
+                    LineMark(x: .value("日付", point.start), y: .value("値", point.value ?? 0)).foregroundStyle(metric.color)
+                }
+            }.chartXAxis(.hidden).chartYAxis(.hidden).frame(width: 60, height: 24)
+        }.frame(height: 64).contentShape(Rectangle())
+            .background(selected ? Palette.green.opacity(0.06) : Color.clear)
+            .accessibilityElement(children: .combine)
+            .accessibilityHint("上のグラフに表示")
+    }
+
+    private func deltaText(_ delta: Double?) -> String {
+        guard let delta else { return "比べる記録なし" }
+        if abs(delta) < metric.threshold { return "± 変化なし" }
+        return (delta > 0 ? "↑ " : "↓ ") + metric.format(abs(delta))
+    }
+}
+
+struct HostChart: View {
+    var metric: ReviewMetric
+    var period: ReviewPeriod
+    var values: [Date: Double]
+
+    private var unit: Calendar.Component {
+        switch period {
+        case .week, .month: return .day
+        case .quarter: return .weekOfYear
+        case .year: return .month
         }
+    }
+
+    var body: some View {
+        let summary = HealthMath.periodSummary(values, period: period)
+        let points = HealthMath.series(values, period: period).filter { $0.value != nil }
+        VStack(alignment: .leading, spacing: 10) {
+            Text(summary.average.map(metric.format) ?? "記録なし").font(.system(.largeTitle, design: .rounded).weight(.semibold))
+            Text(deltaText(summary.delta)).font(.caption.weight(.medium)).foregroundStyle(Palette.secondary)
+            if points.isEmpty {
+                Text("この期間の記録がありません").font(.subheadline).foregroundStyle(Palette.secondary)
+            } else if metric == .weight {
+                weightChart(points, average: summary.average)
+            } else {
+                barChart(points, average: summary.average)
+            }
+            Text(foot(summary)).font(.caption2).foregroundStyle(Palette.secondary)
+        }
+    }
+
+    private func barChart(_ points: [SeriesPoint], average: Double?) -> some View {
+        Chart {
+            ForEach(points) { point in
+                BarMark(x: .value("日付", point.start, unit: unit), y: .value(metric.label, point.value ?? 0))
+                    .foregroundStyle(metric.color)
+            }
+            if let average {
+                RuleMark(y: .value("平均", average)).foregroundStyle(Palette.ink.opacity(0.7))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+                    .annotation(position: .top, alignment: .trailing) { Text("平均 " + metric.shortFormat(average)).font(.caption2) }
+            }
+        }.frame(height: 160)
+            .chartYAxis { AxisMarks(position: .leading) }
+            .chartXAxis { axis }
+            .accessibilityLabel("\(metric.label)の推移")
+    }
+
+    private func weightChart(_ points: [SeriesPoint], average: Double?) -> some View {
+        let numbers = points.compactMap(\.value)
+        let low: Double = (numbers.min() ?? 60) - 0.3
+        let high: Double = (numbers.max() ?? 70) + 0.3
+        return Chart {
+            ForEach(points) { point in
+                LineMark(x: .value("日付", point.start, unit: unit), y: .value("体重", point.value ?? 0)).foregroundStyle(Palette.green)
+                PointMark(x: .value("日付", point.start, unit: unit), y: .value("体重", point.value ?? 0))
+                    .foregroundStyle(Palette.green).symbolSize(20)
+            }
+            if let average {
+                RuleMark(y: .value("平均", average)).foregroundStyle(Palette.ink.opacity(0.6))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 3]))
+            }
+        }.frame(height: 160)
+            .chartYScale(domain: low...high)
+            .chartYAxis { AxisMarks(position: .leading) }
+            .chartXAxis { axis }
+            .accessibilityLabel("体重の推移")
+    }
+
+    private var axis: some AxisContent {
+        AxisMarks(values: .automatic(desiredCount: 5)) { _ in
+            AxisValueLabel(format: period == .year ? Date.FormatStyle.dateTime.month() : Date.FormatStyle.dateTime.month().day())
+        }
+    }
+
+    private func deltaText(_ delta: Double?) -> String {
+        guard let delta else { return "比べる記録がありません" }
+        if abs(delta) < metric.threshold { return "± \(period.comparisonLabel)と変化なし" }
+        return (delta > 0 ? "↑ " : "↓ ") + metric.format(abs(delta)) + " \(period.comparisonLabel)より"
+    }
+
+    private func foot(_ summary: PeriodSummary) -> String {
+        var parts: [String] = []
+        if period == .quarter { parts.append("週ごとの平均") }
+        if period == .year { parts.append("月ごとの平均") }
+        parts.append("記録\(summary.recordedDays)/\(summary.totalDays)日")
+        if metric == .weight { parts.append("縦軸は0からではありません") }
+        if metric == .sleep { parts.append("前日正午〜当日正午の睡眠") }
+        return parts.joined(separator: " · ")
+    }
+}
+
+struct HostCalendar: View {
+    var metric: ReviewMetric
+    var values: [Date: Double]
+    var offset: Int
+    private let columns = Array(repeating: GridItem(.flexible(), spacing: 4), count: 7)
+
+    var body: some View {
+        let days = HealthMath.calendarWeeks(offset: offset)
+        let today = Calendar.current.startOfDay(for: .now)
+        let level = calendarLevels(days.filter { $0 < today }.compactMap { values[$0] })
+        VStack(alignment: .leading, spacing: 8) {
+            WeekdayHeader()
+            LazyVGrid(columns: columns, spacing: 4) {
+                ForEach(days, id: \.self) { day in
+                    let value: Double? = day < today ? values[day] : nil
+                    CalendarCell(day: day, value: value.map(metric.shortFormat), level: value.map(level),
+                        tint: metric.color, isFuture: day >= today)
+                }
+            }
+            Text("濃いほど\(metric == .steps ? "多い" : "長い") · 点線の日は記録なし · 今日はまだ途中なので含めません")
+                .font(.caption2).foregroundStyle(Palette.secondary)
+        }
+    }
+}
+
+// MARK: スクリーンタイム詳細（今日のカードから）
+
+struct ScreenTimeDetailView: View {
+    @EnvironmentObject private var screen: ScreenTimeStore
+    @EnvironmentObject private var gate: GateStore
+    @State private var range: DetailRange = .today
+    @ScaledMetric(relativeTo: .body) private var height = 1040.0
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 16) {
+                Picker("期間", selection: $range) {
+                    ForEach(DetailRange.allCases) { Text($0.label).tag($0) }
+                }.pickerStyle(.segmented)
+                Surface {
+                    if screen.isAuthorized {
+                        DeviceActivityReport(.rhythmDetail(range), filter: screen.todayFilter())
+                            .id("detail-\(range.rawValue)-\(screen.refreshID)")
+                            .frame(height: height)
+                    } else {
+                        Button("スクリーンタイムに接続") { Task { await screen.connect() } }.buttonStyle(.bordered)
+                    }
+                }
+                Surface {
+                    SectionLabel(title: "ゲートを強める時間帯", detail: gate.settings.strongHoursText)
+                    Text("上の濃淡表で伸びやすい時間帯を見て、その時間のゲートの待機を2倍にできます。")
+                        .font(.footnote).foregroundStyle(Palette.secondary)
+                    NavigationLink { GateHoursView() } label: { Label("この時間帯のゲートを強める", systemImage: "clock") }
+                }
+                if range == .today && (gate.isEnabled || !gate.events.isEmpty) { gateRecord }
+                Text("SNSの内訳のアプリ名は、Appleの専用画面の中だけで表示しています。").font(.caption).foregroundStyle(Palette.secondary)
+            }.padding(20).frame(maxWidth: 620).frame(maxWidth: .infinity)
+        }.background(Palette.background).navigationTitle("スクリーンタイム").navigationBarTitleDisplayMode(.inline)
+    }
+
+    private var gateRecord: some View {
+        let events = GateMath.events(on: .now, gate.events)
+        let counts = gate.todayCounts
+        let purposes: String = GatePurpose.allCases.map { purpose in
+            let count = events.filter { $0.kind == .opened && $0.purpose == purpose }.count
+            return "\(purpose.label) \(count)"
+        }.joined(separator: "・")
+        return Surface {
+            SectionLabel(title: "SNSゲートの記録", detail: "今日")
+            row("開こうとした", "\(counts.opened + counts.stayedAway)回")
+            row("やめておいた", "\(counts.stayedAway)回")
+            row("目的を選んで開いた", purposes)
+        }
+    }
+
+    private func row(_ label: String, _ value: String) -> some View {
+        HStack { Text(label).font(.subheadline); Spacer(); Text(value).font(.subheadline.weight(.medium)).multilineTextAlignment(.trailing) }
     }
 }

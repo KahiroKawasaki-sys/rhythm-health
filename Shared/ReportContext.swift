@@ -4,22 +4,35 @@ import ManagedSettings
 import SwiftUI
 
 extension DeviceActivityReport.Context {
-    static let rhythmToday = Self("rhythm.today")
-    static let rhythmWeek = Self("rhythm.week")
-    static let rhythmMonth = Self("rhythm.month")
-    static let rhythmQuarter = Self("rhythm.quarter")
-    static let rhythmYear = Self("rhythm.year")
-    static let rhythmMonthly = Self("rhythm.monthly")
-    static let rhythmSNSWeek = Self("rhythm.sns.week")
-    static let rhythmSNSMonth = Self("rhythm.sns.month")
-    static let rhythmSNSQuarter = Self("rhythm.sns.quarter")
-    static let rhythmSNSYear = Self("rhythm.sns.year")
-    static let rhythmSNSMonthly = Self("rhythm.sns.monthly")
-    static let rhythmSNSCalendar = Self("rhythm.sns.calendar")
     /// 今日の画面のスクリーンタイムカード。比べる基準（7日・30日平均）ごとに分ける。
     static let rhythmTodayCard7 = Self("rhythm.today.card.7")
     static let rhythmTodayCard30 = Self("rhythm.today.card.30")
     static func rhythmTodayCard(compareDays: Int) -> Self { compareDays == 30 ? .rhythmTodayCard30 : .rhythmTodayCard7 }
+    /// 振り返りの上のグラフ（指標×期間）、下の一覧（期間）、カレンダー（指標）。
+    static func rhythmReviewChart(_ metric: ScreenMetric, _ period: ReviewPeriod) -> Self {
+        Self("rhythm.review.chart.\(metric.rawValue).\(period.rawValue)")
+    }
+    static func rhythmReviewRows(_ period: ReviewPeriod) -> Self { Self("rhythm.review.rows.\(period.rawValue)") }
+    static func rhythmReviewCalendar(_ metric: ScreenMetric) -> Self { Self("rhythm.review.calendar.\(metric.rawValue)") }
+    /// スクリーンタイム詳細（今日・7日平均・30日平均）。
+    static func rhythmDetail(_ range: DetailRange) -> Self { Self("rhythm.detail.\(range.rawValue)") }
+}
+
+/// 振り返りで表示拡張が描くスクリーンタイムの指標。
+enum ScreenMetric: String, CaseIterable, Identifiable {
+    case sns, total
+    var id: String { rawValue }
+    var label: String { self == .sns ? "SNS" : "スクリーンタイム" }
+    var color: Color { self == .sns ? ScreenCategory.sns.color : ScreenCategory.work.color }
+}
+
+/// スクリーンタイム詳細の期間。
+enum DetailRange: String, CaseIterable, Identifiable {
+    case today, average7, average30
+    var id: String { rawValue }
+    var label: String { ["今日", "7日平均", "30日平均"][Self.allCases.firstIndex(of: self)!] }
+    /// 平均に使う日数。今日は時間帯別の比較に7日平均を使う。
+    var days: Int { self == .average30 ? 30 : 7 }
 }
 
 /// スクリーンタイムの4区分。どれにも選ばれていないアプリは「その他」。
@@ -137,37 +150,51 @@ enum ScreenCategoryFiles {
     }
 }
 
-/// カレンダーの1マス。本体（睡眠）と表示拡張（SNS）で共用する。levelがnilの日は無色。
-struct HeatCell: View {
+/// 振り返りのカレンダーの1マス。本体（睡眠・歩数）と表示拡張（SNS・合計）で共用する。
+/// levelがnilの日は記録なし（点線）、isFutureは今日以降（薄く）。
+struct CalendarCell: View {
     let day: Date
+    let value: String?
     let level: Double?
-    let detail: String
+    let tint: Color
+    var isFuture = false
+    var goalMet = false
 
     var body: some View {
-        let tint = Color(red: 17/255, green: 90/255, blue: 54/255)
-        let fill: Color = level.map { tint.opacity(0.12 + $0 * 0.88) } ?? Color.clear
-        let ink: Color = (level ?? 0) > 0.6 ? Color.white : Color.primary
-        let border: Color = Color.secondary.opacity(level == nil ? 0.3 : 0)
-        let shape = RoundedRectangle(cornerRadius: 6)
-        let label: String = day.formatted(.dateTime.month().day()) + " " + detail
-        return Text(day.formatted(.dateTime.day()))
-            .font(.caption2)
-            .frame(maxWidth: .infinity, minHeight: 32)
-            .foregroundStyle(ink)
-            .background(fill, in: shape)
-            .overlay(shape.strokeBorder(border, style: StrokeStyle(lineWidth: 1, dash: [2, 2])))
-            .accessibilityLabel(label)
+        let shape = RoundedRectangle(cornerRadius: 7)
+        let fill: Color = level.map { tint.opacity(0.12 + $0 * 0.78) } ?? Color.clear
+        let ink: Color = (level ?? 0) > 0.58 ? .white : .primary
+        let calendar = Calendar.current
+        let showMonth = calendar.component(.day, from: day) == 1
+        let dayText = showMonth ? day.formatted(.dateTime.month(.defaultDigits).day()) : day.formatted(.dateTime.day())
+        return VStack(spacing: 1) {
+            Text(dayText).font(.system(size: 10))
+            if !isFuture { Text(value ?? "—").font(.system(size: 9, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.6) }
+        }
+        .frame(maxWidth: .infinity, minHeight: 38)
+        .foregroundStyle(ink)
+        .background(fill, in: shape)
+        .overlay(shape.strokeBorder(Color.secondary.opacity(level == nil && !isFuture ? 0.35 : 0), style: StrokeStyle(lineWidth: 1, dash: [2, 2])))
+        .overlay(shape.strokeBorder(Color(red: 17/255, green: 90/255, blue: 54/255), lineWidth: goalMet ? 2 : 0))
+        .opacity(isFuture ? 0.35 : 1)
+        .accessibilityElement()
+        .accessibilityLabel(day.formatted(.dateTime.month().day()) + " " + (isFuture ? "" : (value ?? "記録なし")) + (goalMet ? "、目標以下" : ""))
     }
 }
 
-extension ReviewPeriod {
-    func reportContext(sns: Bool) -> DeviceActivityReport.Context {
-        switch self {
-        case .week: return sns ? .rhythmSNSWeek : .rhythmWeek
-        case .month: return sns ? .rhythmSNSMonth : .rhythmMonth
-        case .quarter: return sns ? .rhythmSNSQuarter : .rhythmQuarter
-        case .year: return sns ? .rhythmSNSYear : .rhythmYear
-        case .monthly: return sns ? .rhythmSNSMonthly : .rhythmMonthly
+/// 月曜始まりの曜日見出し。
+struct WeekdayHeader: View {
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(["月", "火", "水", "木", "金", "土", "日"], id: \.self) { name in
+                Text(name).font(.caption2).foregroundStyle(.secondary).frame(maxWidth: .infinity)
+            }
         }
     }
+}
+
+/// 値の最小〜最大で0〜1に直す（カレンダーの濃淡）。
+func calendarLevels(_ values: [Double]) -> (Double) -> Double {
+    let low = values.min() ?? 0, high = values.max() ?? 0
+    return { value in high > low ? (value - low) / (high - low) : 0.5 }
 }
