@@ -2,6 +2,12 @@
 
 体重・睡眠・スクリーンタイムを振り返る、個人向けiPhoneアプリ。iOS 17以上、SwiftUI製。
 
+## このリポジトリについて
+- **Windows PCしか持っていない状態で、Claude Codeと一緒に作ったiPhoneアプリ**です。Macを使わず、ビルド・テスト・署名・TestFlight配布はすべてGitHub ActionsのmacOS環境で行っています（`.github/workflows/`）。
+- 2026-10-05に開発を始め、10-06にTestFlightで初回配布しました。以降も毎日改修しています。
+- SNSを開く前に「仕事／遊び／なんとなく」から目的を選ばせ、使える時間を制限する仕組みを、Appleのスクリーンタイム関連API（Family Controls）で実装しています。
+- 集計ロジックのテスト33本と、シミュレータ向けビルド・署名検査をCIで回しています。
+
 **2026-10-08：バージョン1.0・ビルド1.11.1（0754411）を本人用TestFlightへ配布し、「テスト中」を確認。暗号化方式の申告をアプリへ組み込み、申告漏れを配布前に止める21項目の検査も通過した。長期の振り返り・SNS集計・目的選択を含む。iPhoneのTestFlightから更新する。更新後の実機動作は未検証。**
 
 更新版の送信結果: https://github.com/KahiroKawasaki-sys/rhythm-health/actions/runs/37727447785
