@@ -342,7 +342,7 @@ struct CompareBars: View {
             Text(title).font(.caption2).foregroundStyle(Palette.secondary).frame(width: 28, alignment: .leading)
             GeometryReader { proxy in
                 Capsule().fill(Palette.background)
-                    .overlay(alignment: .leading) { Capsule().fill(color).frame(width: proxy.size.width * value / maximum) }
+                    .overlay(alignment: .leading) { Capsule().fill(color).frame(width: CGFloat(Double(proxy.size.width) * (value / maximum))) }
             }.frame(height: 8)
             Text(label(value)).font(.caption2.monospacedDigit()).frame(width: 64, alignment: .trailing)
         }.accessibilityElement(children: .combine)

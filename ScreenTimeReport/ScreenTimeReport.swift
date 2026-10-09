@@ -410,18 +410,22 @@ struct TodayCardView: View {
     private var stack: some View {
         let total = max(configuration.total(configuration.today), 1)
         let parts = ScreenCategory.allCases.filter { (configuration.today[$0] ?? 0) > 0 }
+        let gaps = Double(max(parts.count - 1, 0)) * 2
+        let description = ScreenCategory.allCases.map { kind -> String in
+            let minutes: Double = configuration.today[kind] ?? 0
+            return kind.label + " " + HealthMath.shortDuration(minutes)
+        }.joined(separator: "、")
         return GeometryReader { proxy in
+            let usable: Double = Double(proxy.size.width) - gaps
             HStack(spacing: 2) {
                 ForEach(parts) { kind in
-                    Rectangle().fill(kind.color)
-                        .frame(width: max(2, (proxy.size.width - CGFloat(max(parts.count - 1, 0)) * 2) * (configuration.today[kind] ?? 0) / total))
+                    let share: Double = (configuration.today[kind] ?? 0) / total
+                    Rectangle().fill(kind.color).frame(width: CGFloat(max(2, usable * share)))
                 }
             }
         }.frame(height: 10).background(Color.secondary.opacity(0.12)).clipShape(Capsule())
             .accessibilityElement()
-            .accessibilityLabel("合計の内訳：" + ScreenCategory.allCases.map {
-                "\($0.label) \(HealthMath.shortDuration(configuration.today[$0] ?? 0))"
-            }.joined(separator: "、"))
+            .accessibilityLabel("合計の内訳：" + description)
     }
 
     private var legend: some View {
@@ -449,7 +453,7 @@ struct TodayCardView: View {
             Text(label).font(.caption2).foregroundStyle(.secondary).frame(width: 28, alignment: .leading)
             GeometryReader { proxy in
                 Capsule().fill(Color.secondary.opacity(0.12))
-                    .overlay(alignment: .leading) { Capsule().fill(color).frame(width: proxy.size.width * value / maximum) }
+                    .overlay(alignment: .leading) { Capsule().fill(color).frame(width: CGFloat(Double(proxy.size.width) * (value / maximum))) }
             }.frame(height: 8)
             Text(HealthMath.shortDuration(value)).font(.caption2.monospacedDigit()).frame(width: 64, alignment: .trailing)
         }
