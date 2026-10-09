@@ -25,6 +25,18 @@ app = get("/v1/apps?filter[bundleId]=com.kawakahi.rhythm")["data"][0]["id"]
 builds = get(f"/v1/builds?filter[app]={app}&sort=-uploadedDate&limit=6&include=buildBetaDetail,betaGroups")
 details = {i["id"]: i["attributes"] for i in builds.get("included", []) if i["type"] == "buildBetaDetails"}
 groups = {i["id"]: i["attributes"].get("name") for i in builds.get("included", []) if i["type"] == "betaGroups"}
+if os.environ.get("ASSIGN_LATEST") == "true":
+    # 最新の処理済みビルドを本人用の内部テストグループへ入れる（グループ名で探す）。
+    latest = next(b for b in builds["data"] if b["attributes"].get("processingState") == "VALID")
+    group = next(g for g in get(f"/v1/apps/{app}/betaGroups")["data"] if g["attributes"].get("isInternalGroup"))
+    body = json.dumps({"data": [{"type": "builds", "id": latest["id"]}]}).encode()
+    request = urllib.request.Request(f"https://api.appstoreconnect.apple.com/v1/betaGroups/{group['id']}/relationships/builds",
+        data=body, method="POST", headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"})
+    urllib.request.urlopen(request).close()
+    print("ASSIGNED", latest["attributes"]["version"], "to", group["attributes"]["name"])
+    builds = get(f"/v1/builds?filter[app]={app}&sort=-uploadedDate&limit=6&include=buildBetaDetail,betaGroups")
+    groups = {i["id"]: i["attributes"].get("name") for i in builds.get("included", []) if i["type"] == "betaGroups"}
+
 for build in builds["data"]:
     a = build["attributes"]
     rel = build.get("relationships", {})

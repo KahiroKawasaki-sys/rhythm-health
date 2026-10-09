@@ -1,6 +1,12 @@
 name: TestFlight build status
 on:
   workflow_dispatch:
+    inputs:
+      assign_latest:
+        description: Add the latest processed build to the internal tester group
+        type: boolean
+        required: true
+        default: false
 permissions:
   contents: read
 jobs:
@@ -17,4 +23,5 @@ jobs:
           ASC_PRIVATE_KEY: ${{ secrets.ASC_PRIVATE_KEY }}
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASSIGN_LATEST: ${{ inputs.assign_latest }}
         run: python3 scripts/build_status.py
