@@ -263,3 +263,58 @@ extension HealthMath {
         return min(max(value / maximum, 0), 1)
     }
 }
+
+// MARK: 今日の画面（同じ時刻までの比較・連続日数）
+extension HealthMath {
+    /// 1時間ごとの値（開始時刻→値）から、各日の0時からelapsed秒までの合計。途中の1時間は按分する。
+    /// その日に1件も値がない日は「記録なし」として結果に含めない（0扱いしない）。
+    static func totalsUntil(_ hourly: [Date: Double], days: [Date], elapsed: TimeInterval,
+                            calendar: Calendar = .current) -> [Date: Double] {
+        var result: [Date: Double] = [:]
+        for day in days {
+            var total = 0.0
+            var seen = false
+            for hour in 0..<24 {
+                guard let start = calendar.date(byAdding: .hour, value: hour, to: day), let value = hourly[start] else { continue }
+                seen = true
+                total += value * min(max((elapsed - Double(hour) * 3600) / 3600, 0), 1)
+            }
+            if seen { result[day] = total }
+        }
+        return result
+    }
+
+    /// 1時間ごとの値を日ごとに合計する。
+    static func dailyTotals(_ hourly: [Date: Double], calendar: Calendar = .current) -> [Date: Double] {
+        var result: [Date: Double] = [:]
+        for (start, value) in hourly { result[calendar.startOfDay(for: start), default: 0] += value }
+        return result
+    }
+
+    /// 今日の前日から遡り、値が目標以下の日が続いた日数。記録のない日か目標を超えた日で止まる。
+    static func streak(_ daily: [Date: Double], goal: Double, today: Date, limit: Int, calendar: Calendar = .current) -> Int {
+        var count = 0
+        var day = calendar.startOfDay(for: today)
+        while count < limit {
+            guard let previous = calendar.date(byAdding: .day, value: -1, to: day),
+                  let value = daily[previous], value <= goal else { break }
+            count += 1
+            day = previous
+        }
+        return count
+    }
+
+    /// その日の中で最初に値が出た時（0〜23時）。
+    static func firstHour(_ hourly: [Date: Double], on day: Date, calendar: Calendar = .current) -> Int? {
+        let start = calendar.startOfDay(for: day)
+        return (0..<24).first { hour in
+            calendar.date(byAdding: .hour, value: hour, to: start).flatMap { hourly[$0] }.map { $0 > 0 } ?? false
+        }
+    }
+
+    /// 1時間未満は「45分」、それ以上は「1時間05分」。
+    static func shortDuration(_ minutes: Double) -> String {
+        let value = Int(minutes.rounded())
+        return value < 60 ? "\(value)分" : "\(value / 60)時間" + String(format: "%02d分", value % 60)
+    }
+}

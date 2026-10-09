@@ -231,10 +231,10 @@ struct GateSettingsSection: View {
                 Button("目的を選ぶ画面を開く") { gate.isGatePresented = true }
                 disableControls
             } else {
-                Button { Task { await gate.enable(selection: screen.snsSelection) } } label: {
+                Button { Task { await gate.enable(selection: screen.categories.gateSelection) } } label: {
                     Label("ひと呼吸の仕組みをオンにする", systemImage: "leaf")
                 }.disabled(!screen.isAuthorized || !screen.hasSNSSelection || gate.loadError != nil)
-                if !screen.hasSNSSelection { Text("先に上の「SNSとして数えるアプリ」を選んでください。").font(.caption).foregroundStyle(Palette.secondary) }
+                if !screen.hasSNSSelection { Text("先に上の「アプリの分類」でSNSを選んでください。").font(.caption).foregroundStyle(Palette.secondary) }
             }
             Stepper("仕事・情報収集 \(draft.workMinutes)分", value: $draft.workMinutes, in: GateSettings.minuteRange)
             Stepper("遊び \(draft.playMinutes)分", value: $draft.playMinutes, in: GateSettings.minuteRange)

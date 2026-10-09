@@ -162,4 +162,34 @@ final class HealthMathTests: XCTestCase {
         XCTAssertEqual(HealthMath.intensity(15, maximum: 10), 1)
         XCTAssertEqual(HealthMath.intensity(5, maximum: 0), 0)
     }
+
+    func testTotalsUntilProratesCurrentHourAndSkipsDaysWithoutData() {
+        let day = date("2026-10-08T00:00:00"), empty = date("2026-10-07T00:00:00")
+        let hourly = [date("2026-10-08T07:00:00"): 10.0, date("2026-10-08T14:00:00"): 30, date("2026-10-08T20:00:00"): 50]
+        // 14:30まで → 7時台10分 + 14時台30分の半分
+        let result = HealthMath.totalsUntil(hourly, days: [day, empty], elapsed: 14.5 * 3600, calendar: calendar)
+        XCTAssertEqual(result[day], 25)
+        XCTAssertNil(result[empty])
+        // 値が夜にしかない日も、記録がある日として0を返す
+        let late = HealthMath.totalsUntil([date("2026-10-08T20:00:00"): 50], days: [day], elapsed: 9 * 3600, calendar: calendar)
+        XCTAssertEqual(late[day], 0)
+    }
+    func testDailyTotalsAndFirstHour() {
+        let hourly = [date("2026-10-08T07:00:00"): 0.0, date("2026-10-08T09:00:00"): 12, date("2026-10-08T21:00:00"): 8]
+        XCTAssertEqual(HealthMath.dailyTotals(hourly, calendar: calendar)[date("2026-10-08T00:00:00")], 20)
+        XCTAssertEqual(HealthMath.firstHour(hourly, on: date("2026-10-08T00:00:00"), calendar: calendar), 9)
+        XCTAssertNil(HealthMath.firstHour(hourly, on: date("2026-10-09T00:00:00"), calendar: calendar))
+    }
+    func testStreakStopsAtMissingOrOverGoalDay() {
+        let today = date("2026-10-09T00:00:00")
+        let daily = [date("2026-10-08T00:00:00"): 40.0, date("2026-10-07T00:00:00"): 45, date("2026-10-06T00:00:00"): 46,
+                     date("2026-10-05T00:00:00"): 10]
+        XCTAssertEqual(HealthMath.streak(daily, goal: 45, today: today, limit: 30, calendar: calendar), 2)
+        XCTAssertEqual(HealthMath.streak(daily, goal: 45, today: today, limit: 1, calendar: calendar), 1)
+        XCTAssertEqual(HealthMath.streak([date("2026-10-07T00:00:00"): 1], goal: 45, today: today, limit: 30, calendar: calendar), 0)
+    }
+    func testShortDuration() {
+        XCTAssertEqual(HealthMath.shortDuration(45), "45分")
+        XCTAssertEqual(HealthMath.shortDuration(65), "1時間05分")
+    }
 }

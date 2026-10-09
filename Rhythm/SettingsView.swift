@@ -10,6 +10,8 @@ struct SettingsView: View {
     @State private var screenGoal = 180
     @State private var saved = false
     @State private var error: String?
+    @AppStorage(TodayKeys.compareDefault) private var compareDefault = 7
+    @State private var editing: ScreenCategory?
     @State private var picking = false
     @State private var draft = FamilyActivitySelection()
     @State private var selectionMessage: String?
@@ -19,7 +21,7 @@ struct SettingsView: View {
                 Button { Task { await health.connect() } } label: {
                     Label(health.hasRequested ? "ヘルスケアのアクセスを確認" : "Appleヘルスケアに接続", systemImage: "heart")
                 }
-                Text("体重・睡眠を読み取り専用で取得。起動・復帰・更新操作で反映します。読み取り拒否とデータなしはアプリから区別できません。")
+                Text("体重・睡眠・歩数を読み取り専用で取得。起動・復帰・更新操作で反映します。読み取り拒否とデータなしはアプリから区別できません。")
                     .font(.footnote).foregroundStyle(Palette.secondary)
                 Button { Task { await screen.connect() } } label: { Label("スクリーンタイムのアクセスを確認", systemImage: "iphone") }
                 Text(screen.isAuthorized ? "スクリーンタイム：許可済み" : "スクリーンタイム：未接続")
@@ -34,17 +36,40 @@ struct SettingsView: View {
             }
             Section {
                 if screen.isAuthorized {
-                    Button { draft = screen.snsSelection; picking = true } label: { Label("アプリとWebサイトを選ぶ", systemImage: "checklist") }
-                        .disabled(screen.selectionError != nil)
-                    Text("選択中：アプリ\(screen.snsSelection.applicationTokens.count)件・Webサイト\(screen.snsSelection.webDomainTokens.count)件・カテゴリ\(screen.snsSelection.categoryTokens.count)件")
-                        .font(.caption).foregroundStyle(Palette.secondary)
+                    ForEach([ScreenCategory.sns, .video, .work]) { category in
+                        Button { open(category) } label: {
+                            HStack {
+                                Circle().fill(category.color).frame(width: 9, height: 9)
+                                Text(category.label).foregroundStyle(Palette.ink)
+                                Spacer()
+                                Text(count(category)).font(.caption).foregroundStyle(Palette.secondary)
+                                Image(systemName: "chevron.right").font(.caption).foregroundStyle(Palette.secondary)
+                            }
+                        }.disabled(screen.selectionError != nil)
+                    }
                 } else {
                     Button { Task { await screen.connect() } } label: { Label("先にスクリーンタイムに接続", systemImage: "iphone") }
                 }
                 if let message = screen.selectionError { Text(message).font(.caption).foregroundStyle(.red) }
                 if let selectionMessage { Text(selectionMessage).font(.caption).foregroundStyle(Palette.green) }
-            } header: { Text("SNSとして数えるアプリ") } footer: {
-                Text("X・Instagram・YouTubeと、それぞれのWebサイト（x.com、instagram.com、youtube.com）を選んでください。Appleの仕組みにより、アプリ名はRhythmからは読み取れません。選択内容はこのiPhoneの中にだけ保存します。")
+            } header: { Text("アプリの分類（スクリーンタイム）") } footer: {
+                Text("SNS：X・Instagramなど（x.com・instagram.comも）／動画：YouTubeなど／仕事：Notion・Slack・Google Chatなど。どれにも入れていないアプリ（LINE・Chromeなど）は「その他」です。SNSと動画は開く前のゲートの対象です。Appleの仕組みにより、アプリ名はRhythmからは読み取れません。選択はこのiPhoneの中にだけ保存します。")
+            }
+            Section {
+                Picker("開いたときの比較", selection: $compareDefault) {
+                    Text("7日平均").tag(7)
+                    Text("30日平均").tag(30)
+                }
+                Stepper("SNSの1日目標 \(screen.categories.snsGoalMinutes)分", value: Binding(
+                    get: { screen.categories.snsGoalMinutes },
+                    set: { value in
+                        var next = screen.categories
+                        next.snsGoalMinutes = value
+                        do { try screen.saveCategories(next) } catch { screen.message = error.localizedDescription }
+                    }), in: ScreenCategories.goalRange, step: 5)
+                    .disabled(screen.selectionError != nil)
+            } header: { Text("比べる基準") } footer: {
+                Text("SNSの目標は、今日の画面の「目標以下の連続日数」に使います。")
             }
             GateSettingsSection()
             Section {
@@ -60,6 +85,8 @@ struct SettingsView: View {
                 Text("初期値は仮の目標です。自分の暮らしに合わせて変更してください。医学的な推奨値ではありません。")
             }
             Section("数字の見方") {
+                Text("今日：スクリーンタイムと歩数は、過去7日/30日のうち記録のある日の「同じ時刻まで」の平均と比べます。睡眠・体重は1日の値の平均です。")
+                Text("最初のSNS：Appleの集計が1時間単位のため「7時台」のように表示します。連続日数は昨日から遡り、記録のない日で止まります（最大30日）。")
                 Text("体重：その日の最新値。手入力がある日は手入力を優先。")
                 Text("睡眠：前日正午〜当日正午に含まれる睡眠。覚醒・就床は除き、重複区間は1回だけ数えます。昼寝や交代勤務は日付の区切りにご注意ください。")
                 Text("平均：昨日までの7日/28日/3か月/1年。記録のない日は除外します。記録日数が異なる期間の比較は目安です。")
@@ -69,7 +96,7 @@ struct SettingsView: View {
                 Text("スマホ：Appleの専用レポート内に自動表示。複数のiPhoneが含まれる場合があります。手入力とは合算しません。")
             }.font(.footnote)
             Section("あなたの記録は、このiPhoneの中に") {
-                Label("Face ID・Touch ID・パスコードで保護", systemImage: "lock.shield")
+                Label("iPhoneのロックとデータ保護で守ります", systemImage: "lock.shield")
                 Text("アカウント登録・広告・外部サーバーへの送信はありません。手入力は端末内に保存し、ヘルスケアの読取値は開いている間だけ扱います。")
                 Text("手入力はバックアップ対象外です。アプリの削除・端末交換で失われます。Appleヘルスケア側の記録はそのまま残ります。")
                 Text("このアプリは生活記録の振り返りを支えるもので、病気の診断や治療判断は行いません。")
@@ -78,11 +105,34 @@ struct SettingsView: View {
         }.navigationTitle("設定").onAppear { sleepGoal = journal.goals.sleepMinutes; screenGoal = journal.goals.screenMinutes }
             .familyActivityPicker(isPresented: $picking, selection: $draft)
             .onChange(of: picking) { _, open in
-                guard !open else { return }
-                do { try screen.saveSelection(draft); gate.selectionChanged(draft); selectionMessage = "SNSとして数えるアプリを保存しました" }
-                catch { selectionMessage = nil; screen.message = error.localizedDescription }
+                guard !open, let category = editing else { return }
+                editing = nil
+                var next = screen.categories
+                switch category {
+                case .sns: next.sns = draft
+                case .video: next.video = draft
+                case .work: next.work = draft
+                case .other: return
+                }
+                do {
+                    try screen.saveCategories(next)
+                    if category != .work { gate.selectionChanged(next.gateSelection) }
+                    selectionMessage = "\(category.label)のアプリを保存しました"
+                } catch { selectionMessage = nil; screen.message = error.localizedDescription }
             }
             .onChange(of: sleepGoal) { _, _ in saved = false }
             .onChange(of: screenGoal) { _, _ in saved = false }
+    }
+
+    private func open(_ category: ScreenCategory) {
+        guard let selection = screen.categories.selection(category) else { return }
+        draft = selection
+        editing = category
+        picking = true
+    }
+
+    private func count(_ category: ScreenCategory) -> String {
+        guard let selection = screen.categories.selection(category), !selection.isEmptySelection else { return "未選択" }
+        return "アプリ\(selection.applicationTokens.count)・サイト\(selection.webDomainTokens.count)・カテゴリ\(selection.categoryTokens.count)"
     }
 }

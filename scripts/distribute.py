@@ -27,7 +27,8 @@ EXTENSION_POINTS = {"com.kawakahi.rhythm.Monitor": "com.apple.deviceactivity.mon
                     "com.kawakahi.rhythm.ShieldConfiguration": "com.apple.ManagedSettingsUI.shield-configuration-service",
                     "com.kawakahi.rhythm.ShieldAction": "com.apple.ManagedSettings.shield-action-service"}
 APP_GROUP = "group.com.kawakahi.rhythm"
-APP_GROUP_BUNDLES = {"com.kawakahi.rhythm", *EXTENSION_POINTS}
+# The report extension reads the app classification (SNS・動画・仕事) from the App Group.
+APP_GROUP_BUNDLES = {"com.kawakahi.rhythm", "com.kawakahi.rhythm.ScreenTimeReport", *EXTENSION_POINTS}
 
 
 def require(condition, message):

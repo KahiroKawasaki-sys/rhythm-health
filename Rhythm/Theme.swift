@@ -5,6 +5,8 @@ enum Palette {
     static let ink = Color(red: 26/255, green: 41/255, blue: 35/255)
     static let secondary = Color(red: 89/255, green: 102/255, blue: 94/255)
     static let background = Color(red: 245/255, green: 246/255, blue: 242/255)
+    /// SNSと合計が平均より多いときだけに使う。
+    static let vermilion = Color(red: 207/255, green: 79/255, blue: 37/255)
 }
 
 struct Surface<Content: View>: View {

@@ -15,7 +15,7 @@ private struct JournalEnvelope: Codable {
 
     init() {
         url = URL.applicationSupportDirectory.appendingPathComponent("Rhythm", isDirectory: true).appendingPathComponent("journal.json")
-        // Loading happens only after device-owner authentication, when protected data is accessible.
+        // Loading happens once the app is in the foreground, when protected data is accessible.
     }
 
     func load() {

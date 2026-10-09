@@ -110,4 +110,17 @@ final class GateMathTests: XCTestCase {
         XCTAssertFalse(GateMath.validate(GateEvent(date: .now, kind: .emergency, minutes: 30)))
         XCTAssertFalse(GateSettings(workMinutes: 0).isValid)
     }
+
+    func testWorkMinutesAndDailyAverages() {
+        let events = [opened("2026-10-07T10:00:00", .work, 15), opened("2026-10-07T11:00:00", .play, 10),
+                      GateEvent(date: date("2026-10-07T12:00:00"), kind: .stayedAway),
+                      opened("2026-10-08T09:00:00", .work, 20)]
+        XCTAssertEqual(GateMath.workMinutes(on: date("2026-10-07T00:00:00"), events, calendar: calendar), 15)
+        let days = [date("2026-10-06T00:00:00"), date("2026-10-07T00:00:00"), date("2026-10-08T00:00:00")]
+        // 10/6は最初の記録より前なので数えない。開こうとした 3回+1回、踏みとどまった 1回+0回
+        let average = GateMath.dailyAverages(days, events, calendar: calendar)
+        XCTAssertEqual(average?.attempts, 2)
+        XCTAssertEqual(average?.stayedAway, 0.5)
+        XCTAssertNil(GateMath.dailyAverages(days, [], calendar: calendar))
+    }
 }

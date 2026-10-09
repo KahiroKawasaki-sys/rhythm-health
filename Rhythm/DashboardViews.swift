@@ -2,87 +2,6 @@ import SwiftUI
 import Charts
 import DeviceActivity
 
-struct TodayView: View {
-    @EnvironmentObject private var journal: JournalStore
-    @EnvironmentObject private var health: HealthStore
-    @EnvironmentObject private var screen: ScreenTimeStore
-    var addEntry: () -> Void
-    private var today: Date { Calendar.current.startOfDay(for: .now) }
-    private var data: DailyHealth {
-        HealthMath.resolve(days: [today], weights: health.weights, sleep: health.sleep, manual: journal.records)[0]
-    }
-
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 22) {
-                VStack(alignment: .leading, spacing: 7) {
-                    Text(Date.now.formatted(.dateTime.month().day().weekday(.wide))).font(.subheadline).foregroundStyle(Palette.secondary)
-                    Text("今日のリズム").font(.largeTitle.bold())
-                    Text("小さな記録から、心地よい毎日へ。").font(.subheadline).foregroundStyle(Palette.secondary)
-                }
-                Surface(background: Color(red: 231/255, green: 237/255, blue: 227/255)) {
-                    HStack {
-                        Label("あなたのペースで", systemImage: "leaf").font(.headline)
-                        Spacer()
-                        Image(systemName: "sparkle").foregroundStyle(Palette.green)
-                    }
-                    Text("まずは、今日の自分を知ろう。")
-                    Text("数字も、体感も。少しずつ記録すると、自分の変化が見えてきます。")
-                        .font(.footnote).foregroundStyle(Palette.secondary)
-                }
-                SectionLabel(title: "今日の記録", detail: "\(today.formatted(.dateTime.month().day()))")
-                MetricTile(title: "体重", icon: "scalemass", value: data.weight.map { String(format: "%.1f", $0) } ?? "—",
-                    unit: "kg", detail: data.weight == nil ? "データがありません" : data.weightSource)
-                MetricTile(title: "睡眠", icon: "moon", value: data.sleepMinutes.map { HealthMath.duration($0) } ?? "—",
-                    unit: "", detail: data.sleepMinutes == nil ? "前日正午から今日正午の睡眠" : "\(data.sleepSource) · 個人目標 \(HealthMath.duration(journal.goals.sleepMinutes))")
-                ScreenReportCard(period: nil)
-                Button(action: addEntry) { Label("今日の記録・体調を入力", systemImage: "plus") }.buttonStyle(PrimaryButtonStyle())
-                if let error = journal.loadError { Notice(text: error) }
-                if !health.hasRequested {
-                    Surface {
-                        Label("自動で記録をつなごう", systemImage: "heart.text.clipboard").font(.headline)
-                        Text("Appleヘルスケアの体重・睡眠を読み込みます。対応体重計やApple Watchなどが保存した記録を使えます。")
-                            .font(.footnote).foregroundStyle(Palette.secondary)
-                        Button("Appleヘルスケアに接続") { Task { await health.connect() } }.buttonStyle(.bordered)
-                    }
-                }
-                if let message = health.message { Notice(text: message) }
-                if let sync = health.lastSync {
-                    Text("ヘルスケア取得 \(sync.formatted(date: .abbreviated, time: .shortened))")
-                        .font(.caption).foregroundStyle(Palette.secondary)
-                }
-                Text("下に引っぱると最新の記録を取得します。")
-                    .font(.caption).foregroundStyle(Palette.secondary)
-            }.padding(20).frame(maxWidth: 620)
-                .frame(maxWidth: .infinity)
-        }.background(Palette.background).toolbar {
-            ToolbarItem(placement: .topBarLeading) { Text("rhythm").font(.title3.weight(.semibold)).foregroundStyle(Palette.green) }
-            ToolbarItem(placement: .topBarTrailing) {
-                if health.isLoading { ProgressView() }
-                else { Button("更新", systemImage: "arrow.clockwise") { Task { await health.refresh(); screen.updateStatus() } } }
-            }
-        }.refreshable { await health.refresh(); screen.updateStatus() }
-    }
-}
-
-struct MetricTile: View {
-    var title: String
-    var icon: String
-    var value: String
-    var unit: String
-    var detail: String
-    var body: some View {
-        Surface {
-            Label(title, systemImage: icon).font(.subheadline.weight(.medium)).foregroundStyle(Palette.secondary)
-            HStack(alignment: .firstTextBaseline, spacing: 6) {
-                Text(value).font(.system(.largeTitle, design: .rounded).weight(.semibold)).contentTransition(.numericText())
-                Text(unit).font(.subheadline).foregroundStyle(Palette.secondary)
-            }
-            Text(detail).font(.caption).foregroundStyle(Palette.secondary)
-        }
-    }
-}
-
 struct ScreenReportCard: View {
     @EnvironmentObject private var screen: ScreenTimeStore
     @EnvironmentObject private var journal: JournalStore
@@ -101,7 +20,7 @@ struct ScreenReportCard: View {
             Label(sns ? "SNSの時間" : "スクリーンタイム", systemImage: sns ? "bubble.left.and.bubble.right" : "iphone").font(.headline)
             if screen.isAuthorized && sns && !screen.hasSNSSelection {
                 Text("SNSだけの時間も、見えるように。").font(.subheadline)
-                Text("設定タブの「SNSとして数えるアプリ」でX・Instagram・YouTubeを選ぶと、ここに表示します。")
+                Text("設定タブの「アプリの分類」でSNSのアプリを選ぶと、ここに表示します。")
                     .font(.footnote).foregroundStyle(Palette.secondary)
             } else if screen.isAuthorized {
                 DeviceActivityReport(context, filter: period.map { screen.filter(period: $0, sns: sns) } ?? screen.filter(days: nil))
@@ -145,7 +64,6 @@ struct ReviewData {
     var previous: [DailyHealth]
     var sleep: [Date: Double]
     var weight: [Date: Double]
-    var mood: [Date: Double]
     func values(_ metric: HealthMetric) -> [Date: Double] { metric == .weight ? weight : sleep }
 }
 
@@ -166,9 +84,7 @@ struct ReviewView: View {
         }
         return ReviewData(current: HealthMath.periodDays(period).compactMap { byDay[$0] },
             previous: HealthMath.comparisonDays(period).compactMap { byDay[$0] },
-            sleep: table(.sleep), weight: table(.weight),
-            mood: Dictionary(journal.records.compactMap { record in record.mood.map { (record.day, Double($0)) } },
-                uniquingKeysWith: { _, last in last }))
+            sleep: table(.sleep), weight: table(.weight))
     }
     private func average(_ metric: HealthMetric, rows: [DailyHealth]) -> Double? {
         HealthMath.average(rows.map { metric.value($0) })
@@ -176,7 +92,7 @@ struct ReviewView: View {
     private func insight(_ current: [DailyHealth]) -> String {
         let sleepCount = current.filter { $0.sleepMinutes != nil }.count
         guard sleepCount >= 3, let avg = average(.sleep, rows: current) else {
-            return "記録がたまると、期間の平均や変化を振り返れます。まずは3日分、睡眠と体調を残してみましょう。"
+            return "記録がたまると、期間の平均や変化を振り返れます。まずは3日分、睡眠を残してみましょう。"
         }
         let target = Double(journal.goals.sleepMinutes) / 60
         let difference = Int((abs(avg - target) * 60).rounded())
@@ -208,7 +124,6 @@ struct ReviewView: View {
                 if period == .monthly, let last = HealthMath.recentMonths(count: 2).first {
                     MonthSummaryCard(title: "睡眠", unit: "時間", comparison: HealthMath.monthComparison(data.sleep, month: last))
                     MonthSummaryCard(title: "体重", unit: "kg", comparison: HealthMath.monthComparison(data.weight, month: last))
-                    MonthSummaryCard(title: "体調", unit: "/5", comparison: HealthMath.monthComparison(data.mood, month: last))
                 } else {
                     ForEach(HealthMetric.allCases, id: \.self) { type in
                         Surface {
@@ -236,7 +151,7 @@ struct ReviewView: View {
                         HealthTrend(rows: data.current, metric: metric, target: journal.goals.sleepMinutes)
                     }
                     if period == .monthly {
-                        MonthlyTable(months: HealthMath.recentMonths(), sleep: data.sleep, weight: data.weight, mood: data.mood)
+                        MonthlyTable(months: HealthMath.recentMonths(), sleep: data.sleep, weight: data.weight)
                     }
                 }
                 SleepCalendarCard(sleep: data.sleep, target: journal.goals.sleepMinutes)
@@ -327,8 +242,7 @@ struct MonthSummaryCard: View {
     var title: String
     var unit: String
     var comparison: MonthComparison
-    private var isScore: Bool { unit == "/5" }
-    private func format(_ value: Double) -> String { String(format: isScore ? "%.1f%@" : "%.1f %@", value, unit) }
+    private func format(_ value: Double) -> String { String(format: "%.1f %@", value, unit) }
     var body: some View {
         Surface {
             SectionLabel(title: "\(comparison.month.start.formatted(.dateTime.month()))の平均\(title)", detail: "記録 \(comparison.recordedDays)日")
@@ -339,7 +253,7 @@ struct MonthSummaryCard: View {
     }
     @ViewBuilder private func row(_ label: String, before: Double?, count: Int) -> some View {
         if let now = comparison.average, let before {
-            Text(String(format: "%@ %+.1f%@（比較期間の記録 %d日）", label, now - before, isScore ? "" : " " + unit, count))
+            Text(String(format: "%@ %+.1f %@（比較期間の記録 %d日）", label, now - before, unit, count))
                 .font(.caption).foregroundStyle(Palette.green)
         } else { Text("\(label)：比較する記録がありません").font(.caption).foregroundStyle(Palette.secondary) }
     }
@@ -429,7 +343,6 @@ struct MonthlyTable: View {
     var months: [DateInterval]
     var sleep: [Date: Double]
     var weight: [Date: Double]
-    var mood: [Date: Double]
     private func summary(_ values: [Date: Double], _ days: [Date]) -> (average: Double?, count: Int) {
         let present = days.compactMap { values[$0] }
         return (HealthMath.average(present.map(Optional.some)), present.count)
@@ -439,14 +352,14 @@ struct MonthlyTable: View {
         DisclosureGroup("月別の数値を見る") {
             ForEach(months.reversed(), id: \.start) { month in
                 let days = HealthMath.completedDays(in: month)
-                let s = summary(sleep, days), w = summary(weight, days), m = summary(mood, days)
+                let s = summary(sleep, days), w = summary(weight, days)
                 VStack(alignment: .leading, spacing: 2) {
                     HStack {
                         Text(month.start.formatted(.dateTime.year().month())).fontWeight(.medium)
                         Spacer()
                         Text("睡眠の記録 \(s.count)/\(days.count)日").foregroundStyle(Palette.secondary)
                     }
-                    Text("睡眠 \(text(s.average, "%.1f時間")) · 体重 \(text(w.average, "%.1fkg")) · 体調 \(text(m.average, "%.1f/5"))")
+                    Text("睡眠 \(text(s.average, "%.1f時間")) · 体重 \(text(w.average, "%.1fkg"))")
                 }.font(.caption).padding(.vertical, 4)
             }
         }.font(.footnote)

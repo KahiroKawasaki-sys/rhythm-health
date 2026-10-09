@@ -1,0 +1,720 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rhythm 画面案 v1.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Kaku+Gothic+New:wght@500;700&family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: 左に操作できるiPhone、右にその画面の変更点。下に提案と確認事項。色はRhythmのDESIGN.mdを継承し、SNSだけ「減らす対象」の朱色 */
+:root{
+  --page:#E8EBE4; --bg:#F5F6F2; --card:#FFFFFF; --ink:#1A2923; --muted:#59665E; --faint:#8C978F;
+  --line:#E2E6DE; --accent:#115A36; --accent-soft:#DCEBE2;
+  --sns:#CF4F25; --sns-soft:#F8E3DA; --video:#7A67A8; --work:#3D6E8F; --chat:#B08C3C; --other:#B8BFB6;
+  --good:#115A36; --bad:#CF4F25; --bezel:#151917; --island:#000000; --shadow:0 30px 60px -30px rgba(20,40,30,.45);
+  --f-ui:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Noto Sans JP","Yu Gothic UI",sans-serif;
+  --f-display:"Zen Kaku Gothic New","Hiragino Sans","Noto Sans JP",sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --page:#0B100E; --bg:#111815; --card:#1A231F; --ink:#E5ECE7; --muted:#A0ADA5; --faint:#6F7C74;
+  --line:#28332E; --accent:#5DBB88; --accent-soft:#1F3A2C;
+  --sns:#F0794D; --sns-soft:#3D2219; --video:#A795D6; --work:#74A9CC; --chat:#D4B266; --other:#58625C;
+  --good:#5DBB88; --bad:#F0794D; --bezel:#2A302D; --island:#000000; --shadow:0 30px 60px -30px rgba(0,0,0,.8);
+  color-scheme:dark}}
+:root[data-theme="dark"]{
+  --page:#0B100E; --bg:#111815; --card:#1A231F; --ink:#E5ECE7; --muted:#A0ADA5; --faint:#6F7C74;
+  --line:#28332E; --accent:#5DBB88; --accent-soft:#1F3A2C;
+  --sns:#F0794D; --sns-soft:#3D2219; --video:#A795D6; --work:#74A9CC; --chat:#D4B266; --other:#58625C;
+  --good:#5DBB88; --bad:#F0794D; --bezel:#2A302D; --island:#000000; --shadow:0 30px 60px -30px rgba(0,0,0,.8);
+  color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--page);color:var(--ink);font-family:var(--f-ui);font-size:14px;line-height:1.6;padding:0 20px;margin:0}
+.wrap{max-width:1180px;margin:0 auto;padding-block:40px 64px;display:grid;gap:48px}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- page intro ---------- */
+.intro{display:grid;gap:14px;max-width:760px}
+.eyebrow{font-size:12px;letter-spacing:.12em;color:var(--muted);font-weight:500}
+.intro h1{font-family:var(--f-display);font-size:clamp(26px,4vw,36px);line-height:1.3;margin:0;text-wrap:balance;font-weight:700}
+.intro p{margin:0;color:var(--muted);max-width:62ch}
+.changes{display:flex;flex-wrap:wrap;gap:8px;margin-top:4px;padding:0;list-style:none}
+.changes li{font-size:12.5px;padding:4px 10px;border-radius:999px;background:var(--card);border:1px solid var(--line)}
+.changes li.del{color:var(--muted);text-decoration:line-through;text-decoration-color:var(--faint)}
+.changes li.add b{color:var(--accent);font-weight:700;margin-right:4px}
+
+/* ---------- stage ---------- */
+.stage{display:grid;grid-template-columns:auto minmax(0,1fr);gap:40px;align-items:start}
+.phone-col{display:grid;gap:14px;justify-items:center}
+.jump{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:400px}
+.jump button{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 11px;font-size:12px;cursor:pointer}
+.jump button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.device{width:min(402px,100%);background:var(--bezel);border-radius:58px;padding:11px;box-shadow:var(--shadow)}
+.screen{position:relative;height:812px;border-radius:47px;overflow:hidden;background:var(--bg);display:flex;flex-direction:column;isolation:isolate}
+.status{height:50px;flex:none;display:flex;align-items:center;justify-content:space-between;padding:6px 30px 0 34px;font-weight:600;font-size:15px;position:relative}
+.island{position:absolute;left:50%;top:11px;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:var(--island)}
+.status svg{display:block}
+.view{flex:1;overflow-y:auto;overflow-x:hidden;padding:4px 16px 24px;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}
+.tabbar{flex:none;display:grid;grid-template-columns:repeat(4,1fr);border-top:1px solid var(--line);background:color-mix(in srgb,var(--bg) 88%,transparent);padding:7px 8px 26px}
+.tabbar button{background:none;border:0;display:grid;justify-items:center;gap:2px;font-size:10.5px;color:var(--faint);cursor:pointer;padding:2px 0}
+.tabbar button[aria-current="page"]{color:var(--accent)}
+.tabbar svg{width:24px;height:24px}
+
+/* ---------- in-phone type ---------- */
+.nav{display:flex;align-items:flex-end;justify-content:space-between;gap:8px;margin:6px 0 12px}
+.nav h2{font-size:32px;line-height:1.1;margin:0;font-weight:700;letter-spacing:.01em}
+.nav .date{font-size:13px;color:var(--muted);font-weight:500;margin-bottom:2px}
+.nav-actions{display:flex;gap:8px}
+.pill-btn{border:0;background:var(--accent-soft);color:var(--accent);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:4px}
+.icon-btn{border:0;background:var(--accent-soft);color:var(--accent);border-radius:50%;width:32px;height:32px;display:grid;place-items:center;cursor:pointer;font-size:20px;line-height:1}
+.back{border:0;background:none;color:var(--accent);font-size:16px;padding:4px 0;cursor:pointer;display:inline-flex;align-items:center;gap:2px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:color-mix(in srgb,var(--ink) 7%,transparent);border-radius:9px;padding:2px;margin-bottom:12px}
+.seg button{border:0;background:none;border-radius:7px;padding:5px 4px;font-size:12.5px;font-weight:500;cursor:pointer;color:var(--muted)}
+.seg button[aria-pressed="true"]{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg.small{margin:0;display:inline-grid}
+.seg.small button{padding:3px 9px;font-size:11.5px}
+.cards{display:grid;gap:10px}
+.card{background:var(--card);border-radius:20px;padding:14px 16px;display:grid;gap:10px}
+.card.tap{cursor:pointer;border:0;text-align:left;width:100%}
+.card-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600;color:var(--muted)}
+.card-h .chev{color:var(--faint);font-size:18px;line-height:1}
+.lbl{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;flex:none;display:inline-block}
+.big{font-size:30px;font-weight:700;line-height:1.15;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.big u,.mid u{text-decoration:none;font-size:.5em;font-weight:600;margin:0 1px 0 2px;color:var(--muted)}
+.mid{font-size:20px;font-weight:700;line-height:1.2;font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:3px;font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;width:max-content;font-variant-numeric:tabular-nums}
+.chip.good{color:var(--good);background:var(--accent-soft)}
+.chip.bad{color:var(--bad);background:var(--sns-soft)}
+.chip.neutral{color:var(--muted);background:color-mix(in srgb,var(--ink) 7%,transparent)}
+.hero{display:grid;grid-template-columns:1.25fr 1fr;gap:12px;align-items:end}
+.hero > div{display:grid;gap:4px;min-width:0}
+.hero .sub{border-left:1px solid var(--line);padding-left:12px}
+.stack{display:flex;height:12px;border-radius:6px;overflow:hidden;gap:2px}
+.stack span{display:block;height:100%}
+.legend{display:grid;grid-template-columns:repeat(4,auto);justify-content:start;gap:3px 14px;margin:0;padding:0;list-style:none;font-size:11.5px;color:var(--muted)}
+.legend li{display:flex;align-items:center;gap:5px;font-variant-numeric:tabular-nums}
+.legend b{color:var(--ink);font-weight:600}
+.legend li.hl{color:var(--sns)} .legend li.hl b{color:var(--sns)}
+.cmp{display:grid;grid-template-columns:34px 1fr 64px;gap:4px 8px;align-items:center;font-size:11.5px;color:var(--muted)}
+.cmp .bar{height:8px;border-radius:4px;background:color-mix(in srgb,var(--ink) 6%,transparent);overflow:hidden}
+.cmp .bar i{display:block;height:100%;border-radius:4px}
+.cmp .v{text-align:right;font-variant-numeric:tabular-nums;color:var(--ink);font-weight:600}
+.foot{font-size:11px;color:var(--faint);margin:0}
+.row2{display:flex;justify-content:space-between;align-items:flex-end;gap:10px}
+.row2 > div{display:grid;gap:4px}
+.gate{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.gate > div{display:grid;gap:2px}
+.gate .mid{font-size:22px}
+.meter{height:6px;border-radius:3px;background:color-mix(in srgb,var(--ink) 8%,transparent);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--sns)}
+.compact{padding:12px 16px}
+.facts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--line);padding-top:10px}
+.facts > div{display:grid;gap:2px;align-content:start;min-width:0}
+.facts b{font-size:16px;font-variant-numeric:tabular-nums}
+.facts .foot{line-height:1.35}
+.heat{display:grid;grid-template-columns:22px repeat(8,1fr);gap:2px;font-size:9.5px;color:var(--faint);align-items:center}
+.heat i{display:block;height:18px;border-radius:4px}
+.heat .hx{text-align:center}
+.cal .d.goal{box-shadow:inset 0 0 0 2px var(--good)}
+.home{position:absolute;inset:0;padding:64px 20px 30px;background:linear-gradient(160deg,color-mix(in srgb,var(--accent) 55%,var(--bg)),color-mix(in srgb,var(--work) 45%,var(--bg)));display:grid;grid-template-columns:repeat(4,1fr);gap:18px 14px;align-content:start}
+.app{display:grid;justify-items:center;gap:4px;font-size:10px;color:#fff;text-shadow:0 1px 2px rgba(0,0,0,.4)}
+.app i{width:58px;height:58px;border-radius:14px;background:rgba(255,255,255,.28);display:block}
+.wg{background:var(--card);border-radius:22px;padding:14px;display:grid;gap:8px;box-shadow:0 6px 20px rgba(0,0,0,.18);color:var(--ink)}
+.wg.m{grid-column:span 4}
+.wg.s{grid-column:span 2;aspect-ratio:1/1;max-width:100%;align-content:space-between}
+.wg-h{display:flex;justify-content:space-between;font-size:11px;font-weight:600;color:var(--muted)}
+.wg .row{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.wg .row > div{display:grid;gap:1px}
+.wg-cap{grid-column:span 4;font-size:11px;color:#fff;text-align:center;text-shadow:0 1px 2px rgba(0,0,0,.4);margin:0}
+.dock{position:absolute;left:12px;right:12px;bottom:14px;height:84px;border-radius:30px;background:rgba(255,255,255,.22);display:grid;grid-template-columns:repeat(4,1fr);place-items:center}
+.dock i{width:58px;height:58px;border-radius:14px;background:rgba(255,255,255,.35);display:block}
+.status.light{color:#fff;z-index:2}
+.adopt{font-size:11px;padding:1px 7px;border-radius:5px;background:var(--accent-soft);color:var(--accent);font-weight:700;white-space:nowrap}
+.where{font-size:12px;color:var(--muted)}
+.where b{color:var(--ink)}
+.hidden-note{font-size:12px;color:var(--faint);text-align:center;padding:4px 0}
+
+/* lists */
+.list{background:var(--card);border-radius:16px;overflow:hidden}
+.list-h{font-size:12px;color:var(--muted);margin:16px 4px 6px;font-weight:500}
+.li{display:flex;align-items:center;gap:10px;padding:11px 14px;border-bottom:1px solid var(--line);min-height:44px}
+.li:last-child{border-bottom:0}
+.li .t{flex:1;min-width:0;display:grid}
+.li .t small{color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.li .r{color:var(--muted);font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.li .chev{color:var(--faint)}
+.src{font-size:10px;padding:1px 6px;border-radius:5px;border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.src.manual{border-color:var(--accent);color:var(--accent)}
+.foot-note{font-size:11.5px;color:var(--faint);margin:6px 4px 0}
+.switch{width:44px;height:26px;border-radius:13px;background:color-mix(in srgb,var(--ink) 15%,transparent);position:relative;border:0;cursor:pointer;flex:none}
+.switch::after{content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;border-radius:50%;background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.switch[aria-checked="true"]{background:var(--accent)}
+.switch[aria-checked="true"]::after{transform:translateX(18px)}
+
+/* review */
+.metric-row{display:grid;grid-template-columns:1fr auto 64px;align-items:center;gap:10px;padding:10px 14px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer}
+.metric-row:last-child{border-bottom:0}
+.metric-row[aria-pressed="true"]{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.metric-row .nm{display:grid;gap:1px;min-width:0}
+.metric-row .nm span{font-size:13.5px;font-weight:600;display:flex;align-items:center;gap:6px}
+.metric-row .nm small{font-size:11px;color:var(--muted)}
+.metric-row .vals{display:grid;justify-items:end;gap:2px}
+.metric-row .vals b{font-size:14px;font-variant-numeric:tabular-nums}
+.chart-card svg{width:100%;height:auto;display:block;overflow:visible}
+.chart-card .ax{font-size:9.5px;fill:var(--faint);font-variant-numeric:tabular-nums}
+.chart-card .grid{stroke:var(--line);stroke-width:1}
+.cal{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.cal .wd{font-size:10px;color:var(--faint);text-align:center}
+.cal .d{aspect-ratio:1/1.05;border-radius:7px;display:grid;align-content:space-between;padding:3px 4px;font-size:9.5px;color:var(--muted);background:color-mix(in srgb,var(--ink) 4%,transparent);max-width:100%}
+.cal .d b{font-size:10.5px;font-weight:600;text-align:right;color:var(--ink);font-variant-numeric:tabular-nums}
+.cal .d.empty{background:none}
+.cal .d.na{background:none;border:1px dashed var(--line)}
+.cal .d.hot b,.cal .d.hot{color:#fff}
+.cal-h{display:flex;justify-content:space-between;align-items:center;font-size:13px;font-weight:600}
+.cal-h button{border:0;background:none;color:var(--accent);font-size:18px;cursor:pointer;padding:0 8px}
+.scale{display:flex;align-items:center;gap:6px;font-size:10.5px;color:var(--faint)}
+.scale i{height:8px;width:80px;border-radius:4px;display:block}
+
+/* sheets */
+.scrim{position:absolute;inset:0;background:rgba(0,0,0,.32);z-index:5;opacity:0;pointer-events:none;transition:opacity .25s}
+.scrim.on{opacity:1;pointer-events:auto}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:88%;background:var(--bg);border-radius:22px 22px 0 0;z-index:6;transform:translateY(105%);transition:transform .3s cubic-bezier(.2,.8,.2,1);display:flex;flex-direction:column}
+.sheet.on{transform:none}
+.sheet-h{display:flex;justify-content:space-between;align-items:center;padding:14px 16px 8px;font-weight:600}
+.sheet-h button{border:0;background:none;color:var(--accent);font-size:15px;cursor:pointer}
+.sheet-h button.done{font-weight:700}
+.sheet-b{overflow-y:auto;padding:0 16px 30px}
+.grab{width:36px;height:5px;border-radius:3px;background:color-mix(in srgb,var(--ink) 20%,transparent);margin:7px auto 0}
+.reo{display:flex;align-items:center;gap:10px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:52px}
+.reo:last-child{border-bottom:0}
+.reo .handle{color:var(--faint);font-size:16px;cursor:grab;letter-spacing:-2px}
+.reo .t{flex:1;font-size:14px}
+.reo .mv{border:0;background:color-mix(in srgb,var(--ink) 6%,transparent);width:28px;height:28px;border-radius:8px;cursor:pointer;color:var(--ink)}
+.reo .mv:disabled{opacity:.3;cursor:default}
+.reo.off .t{color:var(--faint)}
+.field{display:grid;grid-template-columns:110px 1fr;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field label{font-size:13.5px}
+.field input,.field textarea{border:0;background:none;text-align:right;font:inherit;color:var(--ink);width:100%;min-width:0}
+.field textarea{text-align:left;resize:none;height:54px}
+.field input::placeholder,.field textarea::placeholder{color:var(--faint)}
+.toast{position:absolute;left:50%;bottom:100px;transform:translate(-50%,20px);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:999px;font-size:13px;opacity:0;transition:.25s;z-index:8;pointer-events:none;white-space:nowrap}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+
+/* ---------- notes panel ---------- */
+.notes{display:grid;gap:22px;padding-top:44px;min-width:0}
+.notes h2{font-family:var(--f-display);font-size:24px;margin:0;font-weight:700}
+.notes .lead{margin:6px 0 0;color:var(--muted);max-width:60ch}
+.note-block{display:grid;gap:8px}
+.note-block h3{font-size:12px;letter-spacing:.1em;color:var(--muted);margin:0;font-weight:600}
+.note-block ul{margin:0;padding-left:1.1em;display:grid;gap:6px;max-width:64ch}
+.note-block li::marker{color:var(--faint)}
+.note-block li b{font-weight:700}
+.tag{display:inline-block;font-size:11px;padding:0 7px;border-radius:5px;margin-right:6px;font-weight:600;vertical-align:1px}
+.tag.new{background:var(--accent-soft);color:var(--accent)}
+.tag.del{background:color-mix(in srgb,var(--ink) 8%,transparent);color:var(--muted)}
+.tag.chg{background:var(--sns-soft);color:var(--sns)}
+
+/* ---------- proposals / questions ---------- */
+.sec-h{display:grid;gap:6px;margin-bottom:18px}
+.sec-h h2{font-family:var(--f-display);font-size:26px;margin:0;font-weight:700}
+.sec-h p{margin:0;color:var(--muted);max-width:64ch}
+.props{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.prop{background:var(--card);border-radius:18px;padding:18px;display:grid;gap:10px;align-content:start;border:1px solid var(--line)}
+.prop h3{font-size:16px;margin:0;line-height:1.45;display:flex;gap:10px;align-items:baseline}
+.prop h3 .no{font-family:var(--f-display);color:var(--faint);font-size:14px;font-variant-numeric:tabular-nums}
+.prop p{margin:0;font-size:13.5px}
+.prop .ref{font-size:12px;color:var(--muted)}
+.feas{font-size:12px;display:flex;gap:6px;align-items:baseline;color:var(--muted)}
+.feas b{font-size:11px;padding:1px 7px;border-radius:5px;white-space:nowrap}
+.feas b.ok{background:var(--accent-soft);color:var(--accent)}
+.feas b.chk{background:var(--sns-soft);color:var(--sns)}
+.qs{display:grid;gap:10px;counter-reset:q;padding:0;margin:0;list-style:none}
+.qs li{background:var(--card);border-radius:16px;padding:14px 18px;display:grid;grid-template-columns:auto 1fr;gap:4px 14px;border:1px solid var(--line)}
+.qs li::before{counter-increment:q;content:"Q" counter(q);font-family:var(--f-display);font-weight:700;color:var(--accent);grid-row:span 2}
+.qs li b{font-size:14.5px}
+.qs li span{color:var(--muted);font-size:13px}
+footer.page-foot{color:var(--faint);font-size:12px}
+
+@media (max-width:900px){
+  .stage{grid-template-columns:1fr}
+  .notes{padding-top:0}
+}
+@media (max-width:440px){
+  body{padding:0 12px}
+  .device{padding:7px;border-radius:44px}
+  .screen{height:760px;border-radius:38px}
+  .view{padding:4px 12px 24px}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <header class="intro">
+    <span class="eyebrow">RHYTHM ・ 画面案 v1.2（回答反映版） ・ 数字はすべてダミー</span>
+    <h1>今日の数字を、普段の自分と比べてひと目で。</h1>
+    <p>SNSの時間を減らすことを主目的に、今日の画面と振り返りを組み直しました。左のiPhoneは実際に操作できます（タブ、カードのタップ、並び替え、手入力）。右側にその画面で変えた点と、実装上の注意を書いています。</p>
+    <ul class="changes">
+      <li class="del">起動時のFace ID</li>
+      <li class="del">「あなたのペースで」のひとこと</li>
+      <li class="del">体調の入力</li>
+      <li class="add"><b>＋</b>SNS・動画・仕事の内訳</li>
+      <li class="add"><b>＋</b>7日・30日平均との比較</li>
+      <li class="add"><b>＋</b>歩数</li>
+      <li class="add"><b>＋</b>カードの並び替え</li>
+      <li class="add"><b>＋</b>1画面で収まる振り返り</li>
+      <li class="add"><b>＋</b>朝の最初のSNS</li>
+      <li class="add"><b>＋</b>仕事目的の時間を分離</li>
+      <li class="add"><b>＋</b>伸びやすい時間帯</li>
+      <li class="add"><b>＋</b>目標以下の連続記録</li>
+      <li class="add"><b>＋</b>ウィジェット</li>
+      <li>手入力はそのまま</li>
+    </ul>
+  </header>
+
+  <section class="stage" aria-label="画面モック">
+    <div class="phone-col">
+      <div class="jump" id="jump" role="group" aria-label="画面を選ぶ"></div>
+      <div class="device">
+        <div class="screen" id="screen">
+          <div class="status"><span class="num">14:32</span><span class="island"></span>
+            <svg width="66" height="13" viewBox="0 0 66 13" aria-hidden="true"><g fill="currentColor"><rect x="0" y="8" width="3" height="4" rx="1"/><rect x="5" y="6" width="3" height="6" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="0" width="3" height="12" rx="1"/><path d="M29 3.2a8.5 8.5 0 0 1 11 0l-1.3 1.4a6.6 6.6 0 0 0-8.4 0zM31.6 6a4.8 4.8 0 0 1 5.8 0l-1.4 1.5a2.8 2.8 0 0 0-3 0zM34.5 8.8l1.5 1.6-1.5 1.6-1.5-1.6z"/><rect x="44" y="1" width="20" height="11" rx="3" fill="none" stroke="currentColor" stroke-opacity=".4"/><rect x="46" y="3" width="13" height="7" rx="1.5"/></g></svg>
+          </div>
+          <div class="view" id="view"></div>
+          <nav class="tabbar" id="tabbar" aria-label="アプリのタブ">
+            <button data-tab="today"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.6 1.6M17.1 17.1l1.6 1.6M5.3 18.7l1.6-1.6M17.1 6.9l1.6-1.6"/></svg>今日</button>
+            <button data-tab="review"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>振り返り</button>
+            <button data-tab="records"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="3"/><path d="M8 8h8M8 12h8M8 16h5"/></svg>記録</button>
+            <button data-tab="settings"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>設定</button>
+          </nav>
+          <div class="scrim" id="scrim"></div>
+          <div class="sheet" id="sheet-reorder" role="dialog" aria-label="カードの並び替え">
+            <div class="grab"></div>
+            <div class="sheet-h"><span></span><span>今日の画面を編集</span><button class="done" data-close>完了</button></div>
+            <div class="sheet-b"><p class="foot-note" style="margin:0 4px 10px">上下ボタンで順番、スイッチで表示・非表示を変えられます。変更はすぐ今日の画面に反映されます。</p><div class="list" id="reo-list"></div></div>
+          </div>
+          <div class="sheet" id="sheet-entry" role="dialog" aria-label="手入力">
+            <div class="grab"></div>
+            <div class="sheet-h"><button data-close>キャンセル</button><span>手入力</span><button class="done" data-save>保存</button></div>
+            <div class="sheet-b">
+              <div class="list">
+                <div class="field"><label for="f-date">日付</label><input id="f-date" type="text" value="10月9日（金）"></div>
+                <div class="field"><label for="f-w">体重</label><input id="f-w" type="text" inputmode="decimal" placeholder="68.4 kg"></div>
+                <div class="field"><label for="f-s">睡眠</label><input id="f-s" type="text" placeholder="7時間00分"></div>
+                <div class="field"><label for="f-st">スクリーンタイム</label><input id="f-st" type="text" placeholder="分"></div>
+                <div class="field"><label for="f-m">メモ</label><textarea id="f-m" placeholder="ひとことメモ（任意）"></textarea></div>
+              </div>
+              <p class="foot-note">入力した項目だけ、その日のヘルスケアの値より優先します。空欄で保存するとヘルスケアの値に戻ります。スクリーンタイムの手入力は自動集計と合算しません。</p>
+            </div>
+          </div>
+          <div class="toast" id="toast"></div>
+        </div>
+      </div>
+    </div>
+    <aside class="notes" id="notes" aria-live="polite"></aside>
+  </section>
+
+  <section aria-labelledby="prop-h">
+    <div class="sec-h"><span class="eyebrow">採用した追加機能</span><h2 id="prop-h">提案P1〜P5はすべて画面に入れました</h2><p>どの画面に入ったかを書いています。上のiPhoneで該当画面を開くと確認できます。</p></div>
+    <div class="props">
+      <article class="prop"><h3><span class="no">P1</span>SNSが伸びる時間帯だけゲートを強める</h3><p class="where">場所：<b>スクリーンタイム詳細</b>の「伸びやすい時間帯」の濃淡表と、<b>設定</b>の「ゲートを強める時間帯」</p><div class="feas"><b class="ok">実現しやすい</b>既存のゲートの時間帯設定を広げる</div></article>
+      <article class="prop"><h3><span class="no">P2</span>朝、最初にSNSを開いた時刻</h3><p class="where">場所：<b>今日</b>のスクリーンタイムカード下段。平均より遅いほど緑</p><div class="feas"><b class="chk">実機で確認</b>取れない場合はゲートで最初に開こうとした時刻で代用</div></article>
+      <article class="prop"><h3><span class="no">P3</span>ホーム画面ウィジェット</h3><p class="where">場所：<b>ウィジェット</b>（中：踏みとどまり・開こうとした回数・遊び予算／小：遊び予算・連続日数）</p><div class="feas"><b class="ok">実現しやすい</b>SNSの分数はAppleの制約で出せない</div></article>
+      <article class="prop"><h3><span class="no">P4</span>SNSが目標以下の日の連続記録</h3><p class="where">場所：<b>今日</b>のカード下段、<b>振り返り</b>のSNSカレンダー（緑の枠）、ウィジェット</p><div class="feas"><b class="ok">実現しやすい</b>目標は設定で変更（初期45分）</div></article>
+      <article class="prop"><h3><span class="no">P5</span>SNSのうち仕事目的の時間を分ける</h3><p class="where">場所：<b>今日</b>のカード下段、<b>スクリーンタイム詳細</b>のSNSの内訳</p><div class="feas"><b class="chk">おおよその値</b>ゲートで解除した時間から出す</div></article>
+    </div>
+  </section>
+
+  <section aria-labelledby="q-h">
+    <div class="sec-h"><span class="eyebrow">決まったこと</span><h2 id="q-h">ヒアリングの回答</h2></div>
+    <ol class="qs">
+      <li><b>YouTubeは「動画」に入れる</b><span>SNSの時間には含めません。開く前に目的を選ぶゲートは今まで通りYouTubeも対象です。</span></li>
+      <li><b>仕事＝Notion、Slack、Google Chat など</b><span>Chromeは仕事に入れません（その他）。必要になったら設定から追加できます。</span></li>
+      <li><b>チャットは分けず「その他」に入れる</b><span>内訳はSNS・動画・仕事・その他の4区分です。</span></li>
+      <li><b>比較の初期表示は7日平均</b><span>今日の画面の上部でいつでも30日平均に切り替えられます。</span></li>
+    </ol>
+  </section>
+  <footer class="page-foot">Rhythm v1.2 画面案 ・ 2026年10月9日 ・ 数字はすべてダミーで、本人のデータではありません。iPhone実機の見た目はSwiftUIで別途確認します。</footer>
+</div>
+
+<script>
+(function(){
+/* ---------- data ---------- */
+const TODAY=new Date(2026,9,9);
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;}}
+const rnd=mulberry32(20261009);const g=()=>{let u=0,v=0;while(!u)u=rnd();while(!v)v=rnd();return Math.sqrt(-2*Math.log(u))*Math.cos(2*Math.PI*v);};
+const N=800, days=[];
+for(let i=N;i>=1;i--){
+  const d=new Date(TODAY);d.setDate(d.getDate()-i);const wd=d.getDay(),we=wd===0||wd===6;
+  const recent=i<=30?1:i<=60?.5:0;
+  const sns=Math.max(6,Math.round(78-18*recent+(we?18:0)+g()*18));
+  const video=Math.max(0,Math.round(46+(we?25:0)+g()*20));
+  const work=Math.max(0,Math.round(we?18+g()*12:112+g()*30));
+  const chat=Math.max(2,Math.round(24+g()*9));
+  const other=Math.max(1,Math.round(10+g()*4))+chat;
+  const sleep=rnd()<.07?null:Math.round(422+(we?25:0)+g()*38);
+  const weight=rnd()<.33?null:Math.round((69.3-0.9*(1-i/N)+g()*.28)*10)/10;
+  const steps=rnd()<.03?null:Math.max(800,Math.round((we?7800:6300)+g()*(we?3200:1900)));
+  days.push({date:d,sns,video,work,other,total:sns+video+work+other,sleep,weight,steps});
+}
+[[1,44],[2,41],[3,38],[4,66]].forEach(([b,v])=>{const d=days[days.length-b];d.total+=v-d.sns;d.sns=v;});
+const GOAL=45;
+function streak(){let n=0;for(let i=days.length-1;i>=0&&days[i].sns<=GOAL;i--)n++;return n;}
+const NOW={sns:72,total:245,cat:{sns:72,video:48,work:95,other:30},first:"7:12",workPurpose:30,sleep:408,weight:68.4,steps:5210,opened:6,held:3,budget:22,
+  snsApps:[["X",41],["Instagram",24],["x.com（Safari）",7]],
+  hourly:[6,0,0,0,0,0,6,12,9,0,3,0,18,14,4]};
+const AVG={7:{sns:54,total:268,sleep:432,weight:68.1,steps:6300,held:2.1,opened:7.4,first:"6:58",firstD:14},30:{sns:61,total:281,sleep:421,weight:68.6,steps:5800,held:1.6,opened:8.9,first:"6:41",firstD:31}};
+const CATS=[["sns","SNS","--sns"],["video","動画","--video"],["work","仕事","--work"],["other","その他","--other"]];
+const METRICS={
+  sns:{name:"SNS",color:"--sns",unit:"min",lowerBetter:true,cal:true},
+  total:{name:"スクリーンタイム",color:"--work",unit:"min",lowerBetter:true,cal:true,stack:true},
+  sleep:{name:"睡眠",color:"--accent",unit:"min",cal:true,count:true},
+  weight:{name:"体重",color:"--accent",unit:"kg",count:true},
+  steps:{name:"歩数",color:"--accent",unit:"steps",cal:true}
+};
+
+/* ---------- format ---------- */
+const pad=n=>String(n).padStart(2,"0");
+function hm(m){m=Math.round(m);return m<60?`${m}分`:`${Math.floor(m/60)}時間${pad(m%60)}分`;}
+function hmBig(m){m=Math.round(m);return m<60?`${m}<u>分</u>`:`${Math.floor(m/60)}<u>時間</u>${pad(m%60)}<u>分</u>`;}
+function hc(m){m=Math.round(m);return `${Math.floor(m/60)}:${pad(m%60)}`;}
+const fmt={min:{big:hmBig,txt:hm,short:m=>m>=60?hc(m):`${Math.round(m)}`,d:m=>hm(Math.abs(m))},
+  kg:{big:v=>`${v.toFixed(1)}<u>kg</u>`,txt:v=>`${v.toFixed(1)}kg`,short:v=>v.toFixed(1),d:v=>`${Math.abs(v).toFixed(1)}kg`},
+  steps:{big:v=>`${Math.round(v).toLocaleString()}<u>歩</u>`,txt:v=>`${Math.round(v).toLocaleString()}歩`,short:v=>(v/1000).toFixed(1)+"k",d:v=>`${Math.round(Math.abs(v)).toLocaleString()}歩`}};
+function chip(delta,unit,lowerBetter,suffix){
+  const F=fmt[unit],th=unit==="kg"?.05:unit==="steps"?50:1;
+  if(Math.abs(delta)<th)return `<span class="chip neutral">± ${suffix&&suffix.endsWith("より")?"変化なし":lowerBetter===undefined&&suffix===""?"平均と同じ":"変化なし"}</span>`;
+  const up=delta>0,cls=lowerBetter===undefined?"neutral":(up===lowerBetter?"bad":"good");
+  return `<span class="chip ${cls}">${up?"↑":"↓"} ${F.d(delta)}${suffix?" "+suffix:""}</span>`;
+}
+const wdJ=["日","月","火","水","木","金","土"];
+const md=d=>`${d.getMonth()+1}/${d.getDate()}`;
+const css=v=>`var(${v})`;
+
+/* ---------- state ---------- */
+const S={view:"today",cmp:7,order:["screen","gate","sleep","weight","steps"],hidden:[],stRange:"today",period:"month",metric:"sns",rmode:"chart",calOffset:0,cat:true};
+try{const s=JSON.parse(localStorage.getItem("rhythm-v12")||"null");if(s){S.order=s.order||S.order;S.hidden=s.hidden||[];S.cmp=s.cmp||7;}}catch(e){}
+function save(){try{localStorage.setItem("rhythm-v12",JSON.stringify({order:S.order,hidden:S.hidden,cmp:S.cmp}));}catch(e){}}
+const CARD_NAMES={screen:"スクリーンタイム（SNS）",gate:"SNSゲート",sleep:"睡眠",weight:"体重",steps:"歩数"};
+
+const view=document.getElementById("view");
+
+/* ---------- today ---------- */
+function cmpBars(today,avg,color,unit,labelAvg){
+  const mx=Math.max(today,avg)*1.08,F=fmt[unit];
+  return `<div class="cmp"><span>今日</span><div class="bar"><i style="width:${today/mx*100}%;background:${css(color)}"></i></div><span class="v">${F.short(today)}</span>
+  <span>平均</span><div class="bar"><i style="width:${avg/mx*100}%;background:var(--faint);opacity:.55"></i></div><span class="v">${F.short(avg)}</span></div>`;
+}
+function cardHTML(k){
+  const A=AVG[S.cmp],per=`${S.cmp}日平均`;
+  if(k==="screen"){
+    const tot=NOW.total;
+    const seg=CATS.map(([c,,col])=>`<span style="width:${NOW.cat[c]/tot*100}%;background:${css(col)}"></span>`).join("");
+    const leg=CATS.map(([c,n,col])=>`<li class="${c==="sns"?"hl":""}"><span class="dot" style="background:${css(col)}"></span>${n} <b>${hc(NOW.cat[c])}</b></li>`).join("");
+    return `<button class="card tap" data-go="stdetail"><div class="card-h"><span>スクリーンタイム</span><span class="chev">›</span></div>
+      <div class="hero"><div><span class="lbl"><span class="dot" style="background:var(--sns)"></span>SNS</span><span class="big" style="color:var(--sns)">${hmBig(NOW.sns)}</span>${chip(NOW.sns-A.sns,"min",true,NOW.sns>A.sns?"平均より多い":"平均より少ない")}</div>
+      <div class="sub"><span class="lbl">合計</span><span class="mid">${hmBig(tot)}</span>${chip(tot-A.total,"min",true)}</div></div>
+      <div class="stack" aria-label="合計の内訳">${seg}</div><ul class="legend">${leg}</ul>
+      ${cmpBars(NOW.sns,A.sns,"--sns","min")}
+      <p class="foot">平均＝過去${S.cmp}日の、同じ時刻（14:32）までのSNS</p>
+      <div class="facts">
+        <div><span class="lbl">最初のSNS</span><b>${NOW.first}</b><span class="chip good">${A.firstD}分遅い</span><span class="foot">平均 ${A.first}</span></div>
+        <div><span class="lbl">うち仕事目的</span><b>約${NOW.workPurpose}分</b><span class="foot">ゲートで「仕事」を選んで開いた分</span></div>
+        <div><span class="lbl">目標${GOAL}分以下</span><b style="color:var(--good)">${streak()}日連続</b><span class="foot">昨日まで</span></div>
+      </div></button>`;
+  }
+  if(k==="gate"){
+    return `<div class="card"><div class="card-h"><span>SNSゲート（開く前に目的を選ぶ）</span></div>
+      <div class="gate"><div><span class="lbl">開こうとした</span><span class="mid">${NOW.opened}<u>回</u></span><span class="foot">平均 ${A.opened}回</span></div>
+      <div><span class="lbl">踏みとどまった</span><span class="mid" style="color:var(--good)">${NOW.held}<u>回</u></span><span class="foot">平均 ${A.held}回</span></div>
+      <div><span class="lbl">遊び予算</span><span class="mid">${NOW.budget}<u>/30分</u></span><div class="meter"><i style="width:${NOW.budget/30*100}%"></i></div></div></div></div>`;
+  }
+  if(k==="sleep"){
+    return `<div class="card"><div class="card-h"><span>睡眠（昨夜）</span><span class="src">ヘルスケア</span></div>
+      <div class="row2"><div><span class="big">${hmBig(NOW.sleep)}</span></div>${chip(NOW.sleep-A.sleep,"min",undefined,"")}</div>
+      ${cmpBars(NOW.sleep,A.sleep,"--accent","min")}</div>`;
+  }
+  if(k==="weight"){
+    const pts=days.slice(-14).map(d=>d.weight);const vals=pts.filter(v=>v!=null);const mn=Math.min(...vals,A.weight)-.2,mx=Math.max(...vals,A.weight)+.2;
+    const W=300,H=44,x=i=>i/(pts.length)*W,y=v=>H-(v-mn)/(mx-mn)*H;
+    let dots=pts.map((v,i)=>v==null?"":`<circle cx="${x(i)}" cy="${y(v)}" r="2.6" fill="var(--faint)"/>`).join("");
+    dots+=`<circle cx="${W}" cy="${y(NOW.weight)}" r="4" fill="var(--accent)"/>`;
+    return `<div class="card"><div class="card-h"><span>体重（今朝）</span><span class="src">ヘルスケア</span></div>
+      <div class="row2"><div><span class="big">${fmt.kg.big(NOW.weight)}</span></div>${chip(NOW.weight-A.weight,"kg",undefined,"")}</div>
+      <svg viewBox="-4 -6 ${W+8} ${H+12}" style="width:100%;height:auto" aria-label="直近14日の体重"><line x1="0" x2="${W}" y1="${y(A.weight)}" y2="${y(A.weight)}" stroke="var(--faint)" stroke-dasharray="3 3"/>${dots}</svg>
+      <p class="foot">点線＝${per} ${A.weight}kg ・ 直近14日（縦軸は0からではありません）</p></div>`;
+  }
+  if(k==="steps"){
+    return `<div class="card compact"><div class="card-h"><span>歩数（14:32時点）</span><span class="src">ヘルスケア</span></div>
+      <div class="row2"><div><span class="mid">${fmt.steps.big(NOW.steps)}</span></div>${chip(NOW.steps-A.steps,"steps",undefined,"")}</div>
+      ${cmpBars(NOW.steps,A.steps,"--accent","steps")}</div>`;
+  }
+}
+function renderToday(){
+  const vis=S.order.filter(k=>!S.hidden.includes(k));
+  view.innerHTML=`<div class="nav"><div><div class="date">10月9日（金）</div><h2>今日</h2></div>
+    <div class="nav-actions"><button class="pill-btn" data-sheet="reorder">並び替え</button><button class="icon-btn" data-sheet="entry" aria-label="手入力">＋</button></div></div>
+    <div class="seg" role="group" aria-label="比べる基準"><button data-cmp="7" aria-pressed="${S.cmp===7}">7日平均と比べる</button><button data-cmp="30" aria-pressed="${S.cmp===30}">30日平均と比べる</button></div>
+    <div class="cards">${vis.map(cardHTML).join("")}</div>
+    ${S.hidden.length?`<p class="hidden-note">非表示：${S.hidden.map(k=>CARD_NAMES[k]).join("、")}</p>`:""}`;
+}
+
+/* ---------- screen time detail ---------- */
+function avgOf(n,key){const s=days.slice(-n).map(d=>d[key]).filter(v=>v!=null);return s.reduce((a,b)=>a+b,0)/s.length;}
+function renderST(){
+  const r=S.stRange,isT=r==="today",n=r==="d7"?7:30;
+  const vals=isT?NOW.cat:Object.fromEntries(CATS.map(([c])=>[c,avgOf(n,c)]));
+  const tot=Object.values(vals).reduce((a,b)=>a+b,0),mx=Math.max(...Object.values(vals));
+  const rows=CATS.map(([c,nm,col])=>`<div class="cmp" style="grid-template-columns:62px 1fr 70px"><span style="display:flex;align-items:center;gap:6px;color:var(--ink);font-weight:${c==="sns"?700:500}"><span class="dot" style="background:${css(col)}"></span>${nm}</span><div class="bar" style="height:10px"><i style="width:${vals[c]/mx*100}%;background:${css(col)}"></i></div><span class="v">${hm(vals[c])}</span></div>`).join("");
+  const scale=isT?1:vals.sns/NOW.sns;
+  const apps=NOW.snsApps.map(([a,m])=>`<div class="li" style="padding:8px 0;min-height:0"><span class="t" style="font-size:13.5px">${a}</span><span class="r">${hm(m*scale)}</span></div>`).join("");
+  // hourly
+  const avgH=[3,1,0,0,0,0,4,9,6,2,2,3,9,6,4,4,3,4,6,7,9,11,12,8].map(v=>v*(n===7||isT?1:1.1));
+  const W=330,H=110,bw=W/24;
+  let bars="";for(let h=0;h<24;h++){const a=avgH[h],t=isT?NOW.hourly[h]:undefined;const ym=20;
+    bars+=`<rect x="${h*bw+1.5}" y="${H-a/ym*H}" width="${bw-3}" height="${a/ym*H}" rx="2" fill="var(--faint)" opacity=".3"/>`;
+    if(t!==undefined)bars+=`<rect x="${h*bw+3}" y="${H-t/ym*H}" width="${bw-6}" height="${t/ym*H}" rx="2" fill="var(--sns)"/>`;}
+  const ticks=[0,6,12,18].map(h=>`<text class="ax" x="${h*bw}" y="${H+13}">${h}時</text>`).join("");
+  const nowLine=isT?`<line x1="${14.53*bw}" x2="${14.53*bw}" y1="0" y2="${H}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="2 3"/><text class="ax" x="${14.53*bw+3}" y="9">いま</text>`:"";
+  view.innerHTML=`<button class="back" data-go="today">‹ 今日</button>
+    <div class="nav" style="margin-top:2px"><h2 style="font-size:28px">スクリーンタイム</h2></div>
+    <div class="seg" role="group" aria-label="期間"><button data-st="today" aria-pressed="${isT}">今日</button><button data-st="d7" aria-pressed="${r==="d7"}">7日平均</button><button data-st="d30" aria-pressed="${r==="d30"}">30日平均</button></div>
+    <div class="cards">
+      <div class="card"><div class="row2"><div><span class="lbl">合計</span><span class="big">${hmBig(tot)}</span></div><div style="justify-items:end;text-align:right"><span class="lbl" style="justify-content:flex-end">うちSNS</span><span class="mid" style="color:var(--sns)">${Math.round(vals.sns/tot*100)}<u>%</u></span></div></div>${rows}</div>
+      <div class="card"><div class="card-h"><span>SNSの内訳</span><span style="font-weight:700;color:var(--sns)">${hm(vals.sns)}</span></div><div>${apps}</div>
+        <div class="cmp" style="grid-template-columns:auto 1fr auto;border-top:1px solid var(--line);padding-top:10px"><span style="color:var(--ink)">仕事目的で開いた</span><span></span><span class="v">約${Math.round(NOW.workPurpose*scale)}分</span><span style="color:var(--ink)">それ以外</span><span></span><span class="v" style="color:var(--sns)">約${Math.round((NOW.sns-NOW.workPurpose)*scale)}分</span></div>
+        <p class="foot">仕事目的はゲートで解除した時間から出すおおよその値です</p></div>
+      <div class="card chart-card"><div class="card-h"><span>SNSを見た時間帯</span><span class="lbl"><span class="dot" style="background:var(--sns)"></span>${isT?"今日":""}<span class="dot" style="background:var(--faint);opacity:.4;margin-left:6px"></span>${isT?"7日平均":r==="d7"?"7日平均":"30日平均"}</span></div>
+        <svg viewBox="0 -4 ${W} ${H+18}" aria-label="時間帯別のSNS">${bars}${nowLine}${ticks}</svg>
+        <p class="foot">${isT?"夜21〜23時が平均で一番多い時間帯です":"夜21〜23時が一番多い時間帯です"}</p></div>
+      <div class="card"><div class="card-h"><span>SNSが伸びやすい時間帯</span><span class="lbl">直近30日</span></div>${heatHTML()}
+        <p class="foot">一番多いのは <b style="color:var(--sns)">金・土の21〜24時</b> です</p>
+        <button class="pill-btn" data-toast="21〜24時のゲートを強めました（モック）" style="justify-self:start">この時間帯のゲートを強める</button></div>
+      ${isT?`<div class="card"><div class="card-h"><span>SNSゲートの記録</span></div><div class="li" style="padding:6px 0;min-height:0;border:0"><span class="t">開こうとした</span><span class="r">6回</span></div><div class="li" style="padding:6px 0;min-height:0;border:0"><span class="t">やめておいた</span><span class="r" style="color:var(--good);font-weight:600">3回</span></div><div class="li" style="padding:6px 0;min-height:0;border:0"><span class="t">目的を選んで開いた</span><span class="r">仕事 2 ・ 遊び 1 ・ なんとなく 0</span></div></div>`:""}
+    </div>`;
+}
+
+function heatHTML(){
+  const base=[3,0,1,7,9,6,9,17],wf=[1.25,.85,.9,.9,.95,1.3,1.45];
+  const rows=["日","月","火","水","木","金","土"];let mx=0;const v=[];
+  [1,2,3,4,5,6,0].forEach(w=>{const r=base.map((b,i)=>Math.round(b*wf[w]*(1+(Math.sin(w*3+i)*.18))));v.push([rows[w],r]);mx=Math.max(mx,...r);});
+  let h=`<div class="heat"><span></span>${["0","3","6","9","12","15","18","21"].map(x=>`<span class="hx">${x}</span>`).join("")}`;
+  v.forEach(([n,r])=>{h+=`<span>${n}</span>`+r.map(x=>`<i style="background:color-mix(in srgb,var(--sns) ${Math.round(6+x/mx*88)}%,var(--card))" title="${x}分"></i>`).join("");});
+  return h+`</div>`;
+}
+/* ---------- review ---------- */
+const PERIODS={week:{n:7,lbl:"週",prev:"前の7日"},month:{n:30,lbl:"月",prev:"前の30日"},q:{n:91,lbl:"3か月",prev:"前の3か月"},year:{n:365,lbl:"年",prev:"前の1年"}};
+function seriesFor(key,period){
+  const P=PERIODS[period];
+  if(period==="week"||period==="month"){const sl=days.slice(-P.n);return sl.map(d=>({label:md(d.date),wd:d.date.getDay(),v:d[key],stack:CATS.map(([c])=>d[c])}));}
+  if(period==="q"){const sl=days.slice(-91),out=[];for(let i=0;i<13;i++){const w=sl.slice(i*7,i*7+7);const vs=w.map(d=>d[key]).filter(v=>v!=null);out.push({label:md(w[0].date),v:vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null,stack:CATS.map(([c])=>w.reduce((a,d)=>a+d[c],0)/w.length)});}return out;}
+  const out=[];for(let m=11;m>=0;m--){const ref=new Date(2026,9-m,1);const w=days.filter(d=>d.date.getFullYear()===ref.getFullYear()&&d.date.getMonth()===ref.getMonth());const vs=w.map(d=>d[key]).filter(v=>v!=null);out.push({label:`${ref.getMonth()+1}月`,v:vs.length?vs.reduce((a,b)=>a+b,0)/vs.length:null,stack:CATS.map(([c])=>w.reduce((a,d)=>a+d[c],0)/w.length)});}return out;
+}
+function stats(key,period){
+  const n=PERIODS[period].n;const cur=days.slice(-n),prev=days.slice(-2*n,-n);
+  const a=arr=>{const v=arr.map(d=>d[key]).filter(x=>x!=null);return{avg:v.reduce((p,q)=>p+q,0)/v.length,cnt:v.length};};
+  const c=a(cur),p=a(prev);return{avg:c.avg,cnt:c.cnt,n,delta:c.avg-p.avg,from:cur[0].date,to:cur[cur.length-1].date};
+}
+function niceMax(v){const p=Math.pow(10,Math.floor(Math.log10(v)));const m=v/p;return (m<=1.2?1.2:m<=1.5?1.5:m<=2?2:m<=2.5?2.5:m<=3?3:m<=4?4:m<=5?5:m<=6?6:m<=8?8:10)*p;}
+function chartSVG(key){
+  const M=METRICS[key],ser=seriesFor(key,S.period),st=stats(key,S.period);
+  const W=330,H=132,L=34,B=18,T=8,iw=W-L,ih=H-B-T,n=ser.length,bw=iw/n;
+  const F=fmt[M.unit];
+  let out="",yOf;
+  if(M.unit==="kg"){
+    const vs=ser.map(s=>s.v).filter(v=>v!=null);let mn=Math.floor((Math.min(...vs)-.2)*2)/2,mx=Math.ceil((Math.max(...vs)+.2)*2)/2;
+    yOf=v=>T+ih-(v-mn)/(mx-mn)*ih;
+    [mn,(mn+mx)/2,mx].forEach(t=>{out+=`<line class="grid" x1="${L}" x2="${W}" y1="${yOf(t)}" y2="${yOf(t)}"/><text class="ax" x="${L-4}" y="${yOf(t)+3}" text-anchor="end">${t.toFixed(1)}</text>`;});
+    let path="",open=false;ser.forEach((s,i)=>{const x=L+bw*(i+.5);if(s.v==null){open=false;return;}path+=(open?"L":"M")+x+" "+yOf(s.v);open=true;});
+    out+=`<path d="${path}" fill="none" stroke="var(--accent)" stroke-width="2" stroke-linejoin="round"/>`;
+    ser.forEach((s,i)=>{if(s.v!=null)out+=`<circle cx="${L+bw*(i+.5)}" cy="${yOf(s.v)}" r="${n>20?2:3}" fill="var(--card)" stroke="var(--accent)" stroke-width="1.5"/>`;});
+  }else{
+    const vals=M.stack?ser.map(s=>s.stack.reduce((a,b)=>a+b,0)):ser.map(s=>s.v||0);
+    const mx=niceMax(Math.max(...vals));yOf=v=>T+ih-v/mx*ih;
+    [0,mx/2,mx].forEach(t=>{out+=`<line class="grid" x1="${L}" x2="${W}" y1="${yOf(t)}" y2="${yOf(t)}"/><text class="ax" x="${L-4}" y="${yOf(t)+3}" text-anchor="end">${M.unit==="min"?(t>=60?hc(t):Math.round(t)+"分"):F.short(t)}</text>`;});
+    const gap=Math.max(1,bw*.22);
+    ser.forEach((s,i)=>{const x=L+bw*i+gap/2,w=bw-gap;
+      if(s.v==null&&!M.stack){out+=`<rect x="${x}" y="${T+ih-2}" width="${w}" height="2" fill="var(--line)"/>`;return;}
+      if(M.stack){let y0=T+ih;CATS.forEach(([c,,col],ci)=>{const h=s.stack[ci]/mx*ih;y0-=h;out+=`<rect x="${x}" y="${y0}" width="${w}" height="${h}" fill="${css(col)}" ${c==="sns"?"":'opacity=".75"'}/>`;});}
+      else out+=`<rect x="${x}" y="${yOf(s.v)}" width="${w}" height="${T+ih-yOf(s.v)}" rx="${Math.min(3,w/3)}" fill="${css(M.color)}"/>`;});
+  }
+  if(!M.stack){const y=yOf(st.avg);out+=`<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="var(--ink)" stroke-width="1" stroke-dasharray="4 3"/><text class="ax" x="${W}" y="${y-4}" text-anchor="end" style="fill:var(--ink)">平均 ${F.short(st.avg)}</text>`;}
+  const every=n>13?Math.ceil(n/6):n>8?2:1;
+  ser.forEach((s,i)=>{if(i%every===0||i===n-1&&n<=13)out+=`<text class="ax" x="${L+bw*(i+.5)}" y="${H-3}" text-anchor="middle">${s.label}</text>`;});
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${M.name}のグラフ">${out}</svg>`;
+}
+function calendarHTML(key){
+  const M=METRICS[key];const yest=new Date(TODAY);yest.setDate(yest.getDate()-1);
+  const last=new Date(yest);last.setDate(last.getDate()+(7-last.getDay())%7-35*S.calOffset);
+  const first=new Date(last);first.setDate(first.getDate()-34);
+  const cellsD=[];for(let i=0;i<35;i++){const d=new Date(first);d.setDate(d.getDate()+i);cellsD.push(d);}
+  const key0=d=>d.toDateString();const map=new Map(days.map(d=>[key0(d.date),d]));
+  const vs=cellsD.map(d=>map.get(key0(d))).filter(r=>r&&r[key]!=null).map(r=>r[key]);const mn=Math.min(...vs),mx=Math.max(...vs);
+  let cells=["月","火","水","木","金","土","日"].map(w=>`<span class="wd">${w}</span>`).join("");
+  cellsD.forEach(d=>{const lab=d.getDate()===1||d===cellsD[0]?`${d.getMonth()+1}/${d.getDate()}`:d.getDate();
+    if(d>=TODAY){cells+=`<span class="d empty" style="opacity:.35">${lab}</span>`;return;}
+    const rec=map.get(key0(d));const v=rec?rec[key]:null;
+    if(v==null){cells+=`<span class="d na">${lab}<b>—</b></span>`;return;}
+    const t=mx>mn?(v-mn)/(mx-mn):.5,pct=Math.round(12+t*78);
+    cells+=`<span class="d ${pct>58?"hot":""} ${key==="sns"&&v<=GOAL?"goal":""}" style="background:color-mix(in srgb,${css(M.color)} ${pct}%,var(--card))">${lab}<b>${fmt[M.unit].short(v)}</b></span>`;});
+  return `<div class="cal-h"><button data-cal="1" aria-label="前の5週間">‹</button><span>${md(first)}〜${md(last)}</span><button data-cal="-1" aria-label="次の5週間" ${S.calOffset===0?"disabled style='opacity:.25'":""}>›</button></div>
+    <div class="cal">${cells}</div>
+    <div class="scale"><span>少ない</span><i style="background:linear-gradient(90deg,color-mix(in srgb,${css(M.color)} 12%,var(--card)),${css(M.color)})"></i><span>多い</span><span style="margin-left:auto">点線の日＝記録なし</span></div>${key==="sns"?`<div class="scale"><i style="width:14px;height:14px;box-shadow:inset 0 0 0 2px var(--good);border-radius:4px"></i><span>目標${GOAL}分以下の日 ・ いま${streak()}日連続</span></div>`:""}`;
+}
+function sparkSVG(key){
+  const ser=seriesFor(key,S.period).map(s=>s.v);const vs=ser.filter(v=>v!=null);const mn=Math.min(...vs),mx=Math.max(...vs);
+  const W=64,H=22;let p="",open=false;ser.forEach((v,i)=>{if(v==null){open=false;return;}const x=i/(ser.length-1)*W,y=H-(mx>mn?(v-mn)/(mx-mn):.5)*H;p+=(open?"L":"M")+x.toFixed(1)+" "+y.toFixed(1);open=true;});
+  return `<svg viewBox="-1 -2 ${W+2} ${H+4}" width="64" height="24" aria-hidden="true"><path d="${p}" fill="none" stroke="${css(METRICS[key].color)}" stroke-width="1.6" stroke-linejoin="round"/></svg>`;
+}
+function renderReview(){
+  const P=PERIODS[S.period],M=METRICS[S.metric],st=stats(S.metric,S.period),F=fmt[M.unit];
+  const canCal=M.cal&&S.rmode==="cal";
+  const rows=Object.keys(METRICS).map(k=>{const m=METRICS[k],s=stats(k,S.period);
+    return `<button class="metric-row" data-metric="${k}" aria-pressed="${S.metric===k}"><span class="nm"><span><span class="dot" style="background:${css(m.color)}"></span>${m.name}</span><small>1日平均${m.count?` ・ 記録${s.cnt}/${s.n}日`:""}</small></span>
+    <span class="vals"><b>${fmt[m.unit].txt(s.avg)}</b>${chip(s.delta,m.unit,m.lowerBetter)}</span>${sparkSVG(k)}</button>`;}).join("");
+  const legend=M.stack?`<ul class="legend">${CATS.map(([c,n,col])=>`<li class="${c==="sns"?"hl":""}"><span class="dot" style="background:${css(col)}"></span>${n}</li>`).join("")}</ul>`:"";
+  view.innerHTML=`<div class="nav"><h2>振り返り</h2></div>
+   <div class="seg" role="group" aria-label="期間">${Object.entries(PERIODS).map(([k,p])=>`<button data-period="${k}" aria-pressed="${S.period===k}">${p.lbl}</button>`).join("")}</div>
+   <div class="cards">
+    <section class="card chart-card">
+      <div class="row2"><div><span class="lbl"><span class="dot" style="background:${css(M.color)}"></span>${M.name} ・ 1日平均</span><span class="big">${F.big(st.avg)}</span>${chip(st.delta,M.unit,M.lowerBetter,P.prev+"より")}</div>
+      ${M.cal?`<div class="seg small" role="group" aria-label="表示"><button data-rmode="chart" aria-pressed="${!canCal}">グラフ</button><button data-rmode="cal" aria-pressed="${canCal}">カレンダー</button></div>`:""}</div>
+      ${canCal?calendarHTML(S.metric):chartSVG(S.metric)+legend}
+      <p class="foot">${S.metric==="sns"?`目標${GOAL}分以下：${days.slice(-st.n).filter(d=>d.sns<=GOAL).length}/${st.n}日 ・ `:""}${canCal?"数字は1日の値。今日はまだ途中なので含めません":`${md(st.from)}〜${md(st.to)}${S.period==="q"?" ・ 週ごとの平均":S.period==="year"?" ・ 月ごとの平均":""}${M.count?` ・ 記録${st.cnt}/${st.n}日`:""}${M.unit==="kg"?" ・ 縦軸は0からではありません":""}`}</p>
+    </section>
+    <div class="list">${rows}</div>
+   </div>`;
+}
+
+/* ---------- records ---------- */
+function renderRecords(){
+  const list=[];for(let i=0;i<6;i++){const d=i===0?{date:TODAY,weight:NOW.weight,sleep:NOW.sleep,steps:NOW.steps}:days[days.length-i];list.push(d);}
+  const items=list.map((d,i)=>{const manual=i===2;return `<div class="list-h">${d.date.getMonth()+1}月${d.date.getDate()}日（${wdJ[d.date.getDay()]}）${i===0?" ・ 今日":""}</div>
+    <div class="list">
+      <div class="li"><span class="t">体重</span><span class="r">${d.weight!=null?(manual?"68.2":d.weight.toFixed(1))+"kg":"—"}</span>${d.weight!=null||manual?`<span class="src ${manual?"manual":""}">${manual?"手入力":"ヘルスケア"}</span>`:""}</div>
+      <div class="li"><span class="t">睡眠</span><span class="r">${d.sleep!=null?hm(d.sleep):"—"}</span>${d.sleep!=null?'<span class="src">ヘルスケア</span>':""}</div>
+      <div class="li"><span class="t">歩数</span><span class="r">${d.steps!=null?fmt.steps.txt(d.steps):"—"}</span>${d.steps!=null?'<span class="src">ヘルスケア</span>':""}</div>
+      ${manual?`<div class="li"><span class="t">メモ<small>飲み会。帰りにXを30分</small></span><span class="src manual">手入力</span></div>`:""}
+    </div>`;}).join("");
+  view.innerHTML=`<div class="nav"><h2>記録</h2><div class="nav-actions"><button class="pill-btn" data-sheet="entry">＋ 手入力</button></div></div>
+    <p class="foot-note" style="margin:0 4px">ヘルスケアから読んだ値と、手入力した値を区別して表示します。行をタップすると編集できます。</p>${items}`;
+}
+
+/* ---------- settings ---------- */
+function renderSettings(){
+  const cat=(c,n,apps,cnt)=>`<div class="li"><span class="dot" style="background:var(${c})"></span><span class="t">${n}<small>${apps}</small></span><span class="r">${cnt}</span><span class="chev">›</span></div>`;
+  view.innerHTML=`<div class="nav"><h2>設定</h2></div>
+    <div class="list-h">アプリの分類（スクリーンタイム）</div>
+    <div class="list">${cat("--sns","SNS","X、Instagram、x.com、instagram.com","4件")}${cat("--video","動画","YouTube、Netflix、Prime Video","3件")}${cat("--work","仕事","Notion、Slack、Google Chat","3件")}</div>
+    <p class="foot-note">LINEなど、どれにも入れていないアプリは「その他」になります。タップするとAppleのアプリ選択画面が開きます。</p>
+    <div class="list-h">比べる基準</div>
+    <div class="list"><div class="li"><span class="t">開いたときの比較</span><span class="r">7日平均</span><span class="chev">›</span></div><div class="li"><span class="t">SNSの1日の目標<small>振り返りとカレンダーで使います</small></span><span class="r">45分</span><span class="chev">›</span></div></div>
+    <div class="list-h">SNSゲート</div>
+    <div class="list"><div class="li"><span class="t">開く前に目的を選ぶ</span><button class="switch" role="switch" aria-checked="true" aria-label="開く前に目的を選ぶ"></button></div><div class="li"><span class="t">遊び予算</span><span class="r">1日30分</span><span class="chev">›</span></div><div class="li"><span class="t">ゲートを強める時間帯<small>SNSが伸びやすい時間帯から提案</small></span><span class="r">21〜24時・朝4〜9時</span><span class="chev">›</span></div></div>
+    <div class="list-h">ホーム画面ウィジェット</div>
+    <div class="list"><div class="li"><span class="t">表示する内容<small>踏みとどまった回数・遊び予算の残り</small></span><span class="chev">›</span></div></div>
+    <div class="list-h">ヘルスケア</div>
+    <div class="list"><div class="li"><span class="t">読み取る項目<small>体重・睡眠・歩数</small></span><span class="r" style="color:var(--good)">許可済み</span><span class="chev">›</span></div></div>
+    <div class="list-h">データ</div>
+    <div class="list"><div class="li"><span class="t">プライバシーと保存場所</span><span class="chev">›</span></div></div>
+    <p class="foot-note">起動時のFace IDロックの項目はなくしました。</p>`;
+}
+
+function renderWidget(){
+  view.innerHTML=`<div class="home">
+    <div class="wg m"><div class="wg-h"><span>Rhythm ・ SNSゲート</span><span>今日</span></div>
+      <div class="row"><div><span class="lbl">踏みとどまった</span><span class="mid" style="color:var(--good)">${NOW.held}<u>回</u></span></div><div><span class="lbl">開こうとした</span><span class="mid">${NOW.opened}<u>回</u></span></div><div><span class="lbl">遊び予算 残り</span><span class="mid" style="color:var(--sns)">${30-NOW.budget}<u>分</u></span></div></div>
+      <div class="meter"><i style="width:${NOW.budget/30*100}%"></i></div></div>
+    <div class="wg s"><div class="wg-h"><span>遊び予算</span></div><span class="big" style="color:var(--sns)">${30-NOW.budget}<u>分</u></span><span class="foot">残り ・ 1日30分</span><div class="meter"><i style="width:${NOW.budget/30*100}%"></i></div></div>
+    <div class="wg s"><div class="wg-h"><span>目標${GOAL}分以下</span></div><span class="big" style="color:var(--good)">${streak()}<u>日</u></span><span class="foot">連続（昨日まで）</span></div>
+    ${Array.from({length:8}).map(()=>`<span class="app"><i></i>アプリ</span>`).join("")}
+    <p class="wg-cap">ホーム画面の例（中・小サイズ）</p>
+    <div class="dock"><i></i><i></i><i></i><i></i></div></div>`;
+}
+/* ---------- notes ---------- */
+const NOTES={
+ today:{t:"今日",lead:"開いた瞬間に、今日のSNSが普段より多いか少ないかが分かる画面にしました。",
+  ch:[["del","起動時のFace IDロックと、背景に回ったときの目隠しをやめます。"],["del","あいさつと「あなたのペースで」のひとこと、体調5段階の入力をなくしました。"],["new","上部の切り替えで<b>7日平均と30日平均</b>のどちらと比べるかを選べます。各カードに「平均との差」と「今日と平均の横棒」を出します。"],["new","スクリーンタイムは<b>SNSを主役</b>に大きく、右に合計を並べました。下の帯で、合計の中身（SNS・動画・仕事・その他）が一目で分かります。"],["new","スクリーンタイムのカード下段に<b>最初にSNSを開いた時刻</b>（遅いほど緑）、<b>うち仕事目的の時間</b>、<b>目標以下の連続日数</b>を並べました。"],["new","SNSゲート（開く前に目的を選ぶ仕組み）の今日の回数を、独立したカードにしました。"],["new","歩数を追加し、初期配置は一番下です。"],["new","右上の「並び替え」で、カードの順番と表示・非表示を変えられます。"]],
+  im:["比較の初期値は7日平均です。今日の途中の値は「過去の<b>同じ時刻まで</b>の平均」と比べます。14時の値を1日分の平均と比べると、必ず少なく見えてしまうためです。","色は、減らしたいSNSと合計だけ「多い＝朱色／少ない＝緑」にします。睡眠・体重・歩数は良し悪しの色を付けません（今の方針どおり）。","スクリーンタイムの数字はAppleの表示拡張の中でしか描けません。カード単位で本体の画面に埋め込むので、並び替えは問題なくできます。","歩数を読むには、ヘルスケアの許可項目を1つ増やします。更新後の初回に許可ダイアログが1回出ます。","最初のSNSの時刻は、Appleの利用記録から取れるかを実機で確認します。取れない場合は、ゲートで最初に開こうとした時刻で代用します。"]},
+ reorder:{t:"並び替え",lead:"よく見るカードを上に、見ないカードは隠せます。",
+  ch:[["new","上下ボタンで順番を変えます（実機ではドラッグにも対応）。"],["new","スイッチを切るとそのカードを非表示にします。隠したカードは画面の下に名前だけ出ます。"]],
+  im:["並び順は端末内に保存します。外部には送りません。","初期の順番は スクリーンタイム → SNSゲート → 睡眠 → 体重 → 歩数 です。"]},
+ stdetail:{t:"スクリーンタイムの詳細",lead:"今日のカードをタップすると開きます。SNSが「どのアプリで」「何時に」伸びたかを見る画面です。",
+  ch:[["new","合計の内訳を4つの横棒（SNS・動画・仕事・その他）で表示し、合計に占めるSNSの割合を右上に出します。"],["new","SNSに入れたアプリとサイトごとの時間を出します。"],["new","時間帯別のSNSを、平均（薄い棒）と重ねて表示します。どの時間帯で平均を超えたかが分かります。"],["new","SNSの内訳の下に<b>仕事目的で開いた時間とそれ以外</b>を分けて出します（おおよその値）。"],["new","<b>曜日×時間帯の濃淡表</b>でSNSが伸びやすい時間帯を示し、ボタン1つでその時間帯のゲートを強められます。"],["new","今日・7日平均・30日平均を切り替えられます。"]],
+  im:["分類は設定画面で自分で選びます。YouTubeは動画、Notion・Slack・Google Chatは仕事、LINEなどはその他に入れます。","SafariでXを開いた時間は、x.comを指定すればSNSに入ります。<b>Chrome内のサイトはアプリ単位でしか分かりません。</b>","Appleが過去のスクリーンタイムをどこまで保持しているかは実機で確認が必要です（今の引き継ぎメモと同じ課題）。"]},
+ review:{t:"振り返り",lead:"縦に長かった画面をやめ、1画面に収まる構成にしました。",
+  ch:[["chg","上に<b>選んだ指標のグラフを1枚</b>、下に<b>5つの指標の一覧</b>（平均・前の期間との差・小さな推移線）を置きます。一覧の行をタップすると上のグラフが切り替わります。"],["chg","SNSカレンダーなど個別に並んでいたものは、同じ枠の中で「グラフ／カレンダー」の切り替えにまとめました。カレンダーは直近5週間を表示し、左右で過去へ送れます。"],["chg","期間は 週・月・3か月・年 の4つ。3か月は週ごとの平均、年は月ごとの平均の棒です（今の「月別」は「年」に吸収）。"],["new","スクリーンタイムを選ぶと、日ごとの合計を内訳の色で積み上げて表示します。"],["new","SNSのカレンダーでは、<b>目標45分以下の日を緑の枠</b>で囲み、連続日数を出します。"]],
+  im:["今の7日・28日・90日・365日・月別の集計をそのまま使えます。「月」は28日から30日に変える案です。","体重は縦軸が0から始まらないことを明記し、記録のない日は線を切ります（今の方針どおり）。","カレンダーの記録がない日は点線の枠にし、0として扱いません。"]},
+ records:{t:"記録・手入力",lead:"手入力はそのまま残します。",
+  ch:[["del","体調5段階の入力欄をなくしました。"],["new","歩数を履歴に追加しました（ヘルスケアから読むだけで、手入力は不要と判断）。"],["chg","右上の「＋ 手入力」と、今日の画面の「＋」から同じ入力画面を開けます。"]],
+  im:["手入力はその日・その項目だけヘルスケアより優先し、ヘルスケアには書き込みません（今の仕様どおり）。","ヘルスケアの値と手入力の値は、行ごとの小さなラベルで区別します。"]},
+ widget:{t:"ホーム画面ウィジェット",lead:"アプリを開かなくても、今日の踏みとどまりと遊び予算の残りが目に入るようにします。",
+  ch:[["new","中サイズ：踏みとどまった回数・開こうとした回数・遊び予算の残り。"],["new","小サイズ：遊び予算の残り、目標以下の連続日数。"]],
+  im:["ゲートの記録は共有領域にあるので、ウィジェットに出せます。","<b>SNSの利用時間（分）はAppleの制約でウィジェットに出せません。</b>連続日数は、表示拡張の外へ「日数だけ」持ち出せるかを実機で確認します。持ち出せない場合は、ゲートの記録から出せる項目だけにします。","ウィジェット拡張が1つ増えます。Bundle IDの登録が必要です。"]},
+ settings:{t:"設定",lead:"スクリーンタイムの分類を自分で決める項目が増えます。",
+  ch:[["new","<b>アプリの分類</b>：SNS・動画・仕事のそれぞれに、Appleのアプリ選択画面でアプリとサイトを選びます。チャットは分けず「その他」に入れます。"],["chg","ゲートを強める時間帯を、SNSが伸びやすい時間帯から提案する形にしました。"],["new","ホーム画面ウィジェットの表示内容を選べます。"],["new","比べる基準の初期値と、SNSの1日の目標を設定できます。"],["del","起動時のFace IDロックの項目をなくしました。"]],
+  im:["今の「SNSの対象アプリ」の選択を、4つの分類に広げる形です。SNSゲートの対象はSNSの分類と同じものを使います。","選んだアプリの情報はAppleの識別子で、アプリ名は表示拡張の中でしか読めません。"]}
+};
+function renderNotes(key){
+  const N=NOTES[key];const tagTxt={new:"追加",del:"削除",chg:"変更"};
+  document.getElementById("notes").innerHTML=`<div><span class="eyebrow">この画面について</span><h2>${N.t}</h2><p class="lead">${N.lead}</p></div>
+  <div class="note-block"><h3>変えたところ</h3><ul>${N.ch.map(([t,s])=>`<li><span class="tag ${t}">${tagTxt[t]}</span>${s}</li>`).join("")}</ul></div>
+  <div class="note-block"><h3>実装するときの注意</h3><ul>${N.im.map(s=>`<li>${s}</li>`).join("")}</ul></div>`;
+}
+
+/* ---------- router ---------- */
+const JUMPS=[["today","今日"],["reorder","並び替え"],["stdetail","スクリーンタイム詳細"],["review","振り返り"],["records","記録・手入力"],["settings","設定"],["widget","ウィジェット"]];
+const jump=document.getElementById("jump");
+jump.innerHTML=JUMPS.map(([k,n])=>`<button data-jump="${k}">${n}</button>`).join("");
+let noteKey="today";
+function render(){
+  closeSheets(true);
+  ({today:renderToday,stdetail:renderST,review:renderReview,records:renderRecords,settings:renderSettings,widget:renderWidget})[S.view]();
+  const w=S.view==="widget";document.getElementById("tabbar").hidden=w;document.querySelector(".status").classList.toggle("light",w);view.style.padding=w?"0":"";
+  const tab=S.view==="stdetail"?"today":S.view;
+  document.querySelectorAll("#tabbar button").forEach(b=>{if(b.dataset.tab===tab)b.setAttribute("aria-current","page");else b.removeAttribute("aria-current");});
+  setNote(S.view);
+}
+function setNote(k){noteKey=k;renderNotes(k);jump.querySelectorAll("button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.jump===k));}
+function go(v){S.view=v;view.scrollTop=0;render();}
+const scrim=document.getElementById("scrim");
+function closeSheets(silent){document.querySelectorAll(".sheet").forEach(s=>s.classList.remove("on"));scrim.classList.remove("on");if(!silent)setNote(S.view);}
+function openSheet(name){
+  if(name==="reorder"){if(S.view!=="today"){S.view="today";renderToday();}renderReo();}
+  document.getElementById("sheet-"+name).classList.add("on");scrim.classList.add("on");setNote(name==="reorder"?"reorder":"records");
+}
+function renderReo(){
+  document.getElementById("reo-list").innerHTML=S.order.map((k,i)=>{const on=!S.hidden.includes(k);return `<div class="reo ${on?"":"off"}"><span class="handle" aria-hidden="true">≡</span><span class="t">${CARD_NAMES[k]}</span>
+  <button class="mv" data-mv="${i}" data-dir="-1" aria-label="${CARD_NAMES[k]}を上へ" ${i===0?"disabled":""}>↑</button><button class="mv" data-mv="${i}" data-dir="1" aria-label="${CARD_NAMES[k]}を下へ" ${i===S.order.length-1?"disabled":""}>↓</button>
+  <button class="switch" role="switch" aria-checked="${on}" data-vis="${k}" aria-label="${CARD_NAMES[k]}を表示"></button></div>`;}).join("");
+}
+function toast(t){const el=document.getElementById("toast");el.textContent=t;el.classList.add("on");clearTimeout(toast._t);toast._t=setTimeout(()=>el.classList.remove("on"),1600);}
+
+document.addEventListener("click",e=>{
+  const t=e.target.closest("button,[data-go]");if(!t)return;const d=t.dataset;
+  if(d.tab){go(d.tab);return;}
+  if(d.jump){const k=d.jump;if(k==="reorder")openSheet("reorder");else go(k);return;}
+  if(d.go){go(d.go);return;}
+  if(d.cmp){S.cmp=+d.cmp;save();renderToday();return;}
+  if(d.sheet){openSheet(d.sheet);return;}
+  if(d.close!==undefined){closeSheets();return;}
+  if(d.save!==undefined){closeSheets();toast("保存しました（モック）");return;}
+  if(d.toast){toast(d.toast);return;}
+  if(d.mv!==undefined){const i=+d.mv,j=i+ +d.dir;[S.order[i],S.order[j]]=[S.order[j],S.order[i]];save();renderReo();renderToday();return;}
+  if(d.vis){const k=d.vis;S.hidden=S.hidden.includes(k)?S.hidden.filter(x=>x!==k):[...S.hidden,k];save();renderReo();renderToday();return;}
+  if(d.st){S.stRange=d.st;renderST();return;}
+  if(d.period){S.period=d.period;renderReview();return;}
+  if(d.metric){S.metric=d.metric;if(!METRICS[d.metric].cal)S.rmode="chart";renderReview();return;}
+  if(d.rmode){S.rmode=d.rmode;S.calOffset=0;renderReview();return;}
+  if(d.cal){S.calOffset=Math.max(0,Math.min(9,S.calOffset+ +d.cal));renderReview();return;}
+  if(t.classList.contains("switch")){t.setAttribute("aria-checked",t.getAttribute("aria-checked")!=="true");return;}
+});
+scrim.addEventListener("click",()=>closeSheets());
+const h=(location.hash||"").slice(1);if(["today","stdetail","review","records","settings","widget"].includes(h))S.view=h;
+render();
+})();
+</script>
+
+</html>

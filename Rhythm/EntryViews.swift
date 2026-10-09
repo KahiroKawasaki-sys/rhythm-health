@@ -38,7 +38,6 @@ struct HistoryView: View {
                                 .font(.caption).foregroundStyle(Palette.secondary)
                             if let manual = journal.records.first(where: { $0.day == row.day }) {
                                 if let minutes = manual.screenMinutes { Text("スマホ \(HealthMath.duration(minutes))（手入力）").font(.subheadline) }
-                                if let mood = manual.mood { Text("体調 \(mood)/5").font(.caption).foregroundStyle(Palette.green) }
                                 if !manual.note.isEmpty { Text(manual.note).font(.footnote).foregroundStyle(Palette.secondary).multilineTextAlignment(.leading) }
                             }
                         }
@@ -59,7 +58,8 @@ struct EntryView: View {
     @State private var sleepMinutes = ""
     @State private var screenHours = ""
     @State private var screenMinutes = ""
-    @State private var mood = 0
+    /// v1.1までの体調の値。入力欄はなくしたが、保存時に消さないよう引き継ぐ。
+    @State private var mood: Int?
     @State private var note = ""
     @State private var error: String?
     @State private var confirmDelete = false
@@ -82,12 +82,7 @@ struct EntryView: View {
             } header: { Text("スマホ時間・任意") } footer: {
                 Text("Appleの自動レポートとは別の手入力記録です。合算されません。")
             }
-            Section("今日の体調") {
-                Picker("体感", selection: $mood) {
-                    Text("未記録").tag(0)
-                    Text("1 · つらい").tag(1); Text("2 · いまひとつ").tag(2)
-                    Text("3 · ふつう").tag(3); Text("4 · いい感じ").tag(4); Text("5 · とても良い").tag(5)
-                }
+            Section("メモ") {
                 TextField("例：夜のスマホを早めに切り上げた", text: $note, axis: .vertical).lineLimit(3...6)
                 Text("\(note.count)/500文字").font(.caption).foregroundStyle(Palette.secondary)
             }
@@ -119,7 +114,7 @@ struct EntryView: View {
         sleepMinutes = record.sleepMinutes.map { String($0 % 60) } ?? ""
         screenHours = record.screenMinutes.map { String($0 / 60) } ?? ""
         screenMinutes = record.screenMinutes.map { String($0 % 60) } ?? ""
-        mood = record.mood ?? 0; note = record.note
+        mood = record.mood; note = record.note
     }
 
     private func number(_ text: String) -> String {
@@ -144,7 +139,7 @@ struct EntryView: View {
             let record = DayRecord(day: day, weight: kg,
                 sleepMinutes: try duration(hours: sleepHours, minutes: sleepMinutes, label: "睡眠"),
                 screenMinutes: try duration(hours: screenHours, minutes: screenMinutes, label: "スマホ"),
-                mood: mood == 0 ? nil : mood, note: note.trimmingCharacters(in: .whitespacesAndNewlines))
+                mood: mood, note: note.trimmingCharacters(in: .whitespacesAndNewlines))
             try journal.upsert(record)
             dismiss()
         } catch { self.error = error.localizedDescription }

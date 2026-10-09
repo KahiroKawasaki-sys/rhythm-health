@@ -6,47 +6,26 @@ import SwiftUI
     @StateObject private var journal = JournalStore()
     @StateObject private var health = HealthStore()
     @StateObject private var screen = ScreenTimeStore()
-    @StateObject private var lock = AppLock()
     @Environment(\.scenePhase) private var phase
 
     var body: some Scene {
         WindowGroup {
-            ZStack {
-                Palette.background.ignoresSafeArea()
-                if lock.isUnlocked {
-                    RootView().environmentObject(journal).environmentObject(health).environmentObject(screen).environmentObject(gate)
-                        .task { journal.load(); screen.loadSelection(); screen.updateStatus(); gate.load(); await health.refresh() }
-                        .sheet(isPresented: $gate.isGatePresented) { GateView().environmentObject(gate) }
-                } else {
-                    VStack(spacing: 24) {
-                        Image(systemName: "leaf").font(.system(size: 52)).foregroundStyle(Palette.green)
-                        Text("Rhythm").font(.system(size: 38, weight: .semibold, design: .rounded))
-                        Text("日々を知る。自分を整える。").foregroundStyle(Palette.secondary)
-                        Button { Task { await lock.unlock() } } label: {
-                            Label("記録を開く", systemImage: "lock.open")
-                        }.buttonStyle(PrimaryButtonStyle()).disabled(lock.isAuthenticating)
-                        if let message = lock.message { Notice(text: message) }
-                        Text("あなたの記録は、このiPhoneの中に。").font(.caption).foregroundStyle(Palette.secondary)
-                    }.padding(32).frame(maxWidth: 440)
+            RootView().environmentObject(journal).environmentObject(health).environmentObject(screen).environmentObject(gate)
+                .background(Palette.background.ignoresSafeArea())
+                .task { journal.load(); screen.loadSelection(); screen.updateStatus(); gate.load(); await health.refresh() }
+                .sheet(isPresented: $gate.isGatePresented) { GateView().environmentObject(gate) }
+                .tint(Palette.green).preferredColorScheme(.light)
+                .onOpenURL { gate.handle(url: $0) }
+                .onChange(of: phase) { _, next in
+                    if next == .background { gate.isGatePresented = false }
+                    guard next == .active else { return }
+                    // 保護されたファイルを読めなかった場合は、端末の解除後にもう一度読む。
+                    if journal.loadError != nil { journal.load() }
+                    if screen.selectionError != nil { screen.loadSelection() }
+                    if gate.loadError != nil { gate.load() }
+                    screen.updateStatus(); gate.refresh()
+                    Task { await health.refresh() }
                 }
-                // Hide snapshots immediately when the app becomes inactive.
-                if phase != .active {
-                    Palette.background.ignoresSafeArea()
-                    Image(systemName: "leaf").font(.largeTitle).foregroundStyle(Palette.green)
-                }
-            }
-            .tint(Palette.green).preferredColorScheme(.light)
-            .task { await lock.unlock() }
-            .onOpenURL { gate.handle(url: $0) }
-            .onChange(of: phase) { _, next in
-                if next == .background { lock.lock(); gate.isGatePresented = false }
-                if next == .active {
-                    Task {
-                        if !lock.isUnlocked { await lock.unlock() }
-                        else { screen.updateStatus(); gate.refresh(); await health.refresh() }
-                    }
-                }
-            }
         }
     }
 }

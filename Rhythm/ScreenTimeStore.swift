@@ -50,40 +50,48 @@ import Combine
             webDomains: snsSelection.webDomainTokens)
     }
 
-    // MARK: SNSとして数えるアプリ（手入力と同じ保護方式で端末内に保存）
-    @Published private(set) var snsSelection = FamilyActivitySelection()
-    @Published private(set) var selectionError: String?
-    private let selectionURL = URL.applicationSupportDirectory.appendingPathComponent("Rhythm", isDirectory: true)
-        .appendingPathComponent("sns-selection.json")
-
-    var hasSNSSelection: Bool {
-        !snsSelection.applicationTokens.isEmpty || !snsSelection.categoryTokens.isEmpty || !snsSelection.webDomainTokens.isEmpty
+    /// 今日のカード用。過去30日と今日を1時間単位で渡す（同じ時刻までの平均と連続日数に使う）。
+    func todayFilter() -> DeviceActivityFilter {
+        let today = Calendar.current.startOfDay(for: .now)
+        let start = Calendar.current.date(byAdding: .day, value: -30, to: today) ?? today
+        return DeviceActivityFilter(segment: .hourly(during: DateInterval(start: start, end: .now)),
+            users: .all, devices: .init([.iPhone]))
     }
 
-    /// Call only after device-owner authentication, when protected data is accessible.
+    // MARK: アプリの分類（SNS・動画・仕事）とSNSの目標。表示拡張が読めるようApp Groupに保存
+    @Published private(set) var categories = ScreenCategories()
+    @Published private(set) var selectionError: String?
+    /// v1.1まではSNSの選択だけを本体の領域に保存していた。初回に分類へ移す。
+    private let legacyURL = URL.applicationSupportDirectory.appendingPathComponent("Rhythm", isDirectory: true)
+        .appendingPathComponent("sns-selection.json")
+
+    var snsSelection: FamilyActivitySelection { categories.sns }
+    var hasSNSSelection: Bool { !categories.sns.isEmptySelection }
+
     func loadSelection() {
         do {
-            guard FileManager.default.fileExists(atPath: selectionURL.path) else {
-                snsSelection = FamilyActivitySelection(); selectionError = nil; return
+            if let saved = try ScreenCategoryFiles.load() {
+                categories = saved
+            } else {
+                var next = ScreenCategories()
+                if FileManager.default.fileExists(atPath: legacyURL.path) {
+                    next.sns = try JSONDecoder().decode(FamilyActivitySelection.self, from: Data(contentsOf: legacyURL))
+                    try ScreenCategoryFiles.save(next)
+                }
+                categories = next
             }
-            snsSelection = try JSONDecoder().decode(FamilyActivitySelection.self, from: Data(contentsOf: selectionURL))
             selectionError = nil
         } catch {
-            snsSelection = FamilyActivitySelection()
-            selectionError = "SNSの選択を読み込めませんでした。元の選択を守るため、保存を停止しています。アプリを閉じて、端末を解除してから再度お試しください。"
+            categories = ScreenCategories()
+            selectionError = "アプリの分類を読み込めませんでした。元の選択を守るため、保存を停止しています。アプリを閉じて、端末を解除してから再度お試しください。"
         }
     }
 
-    func saveSelection(_ next: FamilyActivitySelection) throws {
+    func saveCategories(_ next: ScreenCategories) throws {
         if let selectionError { throw JournalStore.StoreError.message(selectionError) }
-        var folder = selectionURL.deletingLastPathComponent()
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true,
-            attributes: [.protectionKey: FileProtectionType.complete])
-        var values = URLResourceValues()
-        values.isExcludedFromBackup = true
-        try folder.setResourceValues(values)
-        try JSONEncoder().encode(next).write(to: selectionURL, options: [.atomic, .completeFileProtection])
-        snsSelection = next
+        guard ScreenCategories.goalRange.contains(next.snsGoalMinutes) else { throw JournalStore.StoreError.message("SNSの目標を確認してください。") }
+        try ScreenCategoryFiles.save(next)
+        categories = next
         refreshID = UUID()
     }
 }

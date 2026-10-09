@@ -4,7 +4,7 @@
 	classes = {};
 	objectVersion = 56;
 	objects = {
-		05B1F34B1A9B0BF4F0DC1EEF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rhythm/AppLock.swift"; sourceTree = "<group>"; };
+		05B1F34B1A9B0BF4F0DC1EEF = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rhythm/TodayViews.swift"; sourceTree = "<group>"; };
 		B2900DD4CB34CF51442C2166 = { isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = "Rhythm/Assets.xcassets"; sourceTree = "<group>"; };
 		3446474B7C33E002CE552314 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rhythm/DashboardViews.swift"; sourceTree = "<group>"; };
 		DC952CC09F7360015BC0CAD1 = { isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Rhythm/EntryViews.swift"; sourceTree = "<group>"; };

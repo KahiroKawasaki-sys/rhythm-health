@@ -134,6 +134,26 @@ enum GateMath {
         return (today.filter { $0.kind == .opened || $0.kind == .emergency }.count, today.filter { $0.kind == .stayedAway }.count)
     }
 
+    /// その日に「仕事」で解除した分数の合計。実際に使った時間ではなく、解除した分で数える（おおよそ）。
+    static func workMinutes(on day: Date, _ events: [GateEvent], calendar: Calendar = .current) -> Int {
+        Self.events(on: day, events, calendar: calendar)
+            .filter { $0.kind == .opened && $0.purpose == .work }
+            .reduce(0) { $0 + ($1.minutes ?? 0) }
+    }
+
+    /// 開こうとした回数（開いた・緊急・やめておく）と踏みとどまった回数の1日平均。
+    /// 最初の記録より前の日は数えない。対象の日がなければnil。
+    static func dailyAverages(_ days: [Date], _ events: [GateEvent], calendar: Calendar = .current)
+        -> (attempts: Double, stayedAway: Double)? {
+        guard let first = events.map(\.date).min().map({ calendar.startOfDay(for: $0) }) else { return nil }
+        let counted = days.filter { $0 >= first }
+        guard !counted.isEmpty else { return nil }
+        let totals = counted.map { todayCounts($0, events, calendar: calendar) }
+        let attempts = totals.reduce(0) { $0 + $1.opened + $1.stayedAway }
+        let stayed = totals.reduce(0) { $0 + $1.stayedAway }
+        return (Double(attempts) / Double(counted.count), Double(stayed) / Double(counted.count))
+    }
+
     /// 再遮断の監視区間。15分未満の解除は、開始を過去にずらして15分の区間にする（実機で要確認）。
     static func unlockWindow(from now: Date, minutes: Int) -> DateInterval {
         let end = now.addingTimeInterval(TimeInterval(minutes * 60))

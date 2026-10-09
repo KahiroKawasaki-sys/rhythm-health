@@ -23,7 +23,7 @@ import UIKit
     var settings: GateSettings { config.settings }
     var unlockedUntil: Date? { config.unlockedUntil.flatMap { $0 > .now ? $0 : nil } }
 
-    /// Call only after device-owner authentication, when protected data is accessible.
+    /// Call while the app is in the foreground, when protected data is accessible.
     func load() {
         do {
             config = try GateFiles.loadConfig()
@@ -40,7 +40,7 @@ import UIKit
     func enable(selection: FamilyActivitySelection) async {
         guard loadError == nil else { message = loadError; return }
         guard !selection.applicationTokens.isEmpty || !selection.webDomainTokens.isEmpty || !selection.categoryTokens.isEmpty else {
-            message = "先に「SNSとして数えるアプリ」を選んでください。"; return
+            message = "先に「アプリの分類」でSNSを選んでください。"; return
         }
         let granted = (try? await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])) ?? false
         var next = config
