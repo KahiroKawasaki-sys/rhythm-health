@@ -41,6 +41,15 @@ class DistributionChecks(unittest.TestCase):
         self.info["NSExtension"] = {"NSExtensionPointIdentifier": "com.apple.deviceactivityui.report-extension"}
         with self.assertRaises(ValueError): self.check()
 
+    def test_widget_needs_app_group_but_not_family_controls(self):
+        self.make_gate_extension("Widget", "com.apple.widgetkit-extension")
+        for ent in (self.signed, self.profile["Entitlements"]):
+            del ent["com.apple.developer.family-controls"]
+        self.check()
+        for ent in (self.signed, self.profile["Entitlements"]):
+            ent["com.apple.security.application-groups"] = []
+        with self.assertRaises(ValueError): self.check()
+
     def make_gate_extension(self, name, point):
         self.bundle = f"com.kawakahi.rhythm.{name}"
         self.info["CFBundleIdentifier"] = self.bundle

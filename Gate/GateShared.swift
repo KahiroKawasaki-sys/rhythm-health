@@ -3,6 +3,7 @@ import FamilyControls
 import ManagedSettings
 import DeviceActivity
 import UserNotifications
+import WidgetKit
 
 /// 本体と3つの拡張（監視・シールド表示・シールド操作）で共有する部品。
 enum GateShared {
@@ -91,6 +92,7 @@ enum GateFiles {
     static func saveConfig(_ config: GateConfig) throws {
         let data = try JSONEncoder().encode(config)
         try coordinatedWrite(try configURL()) { _ in data }
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetOptions.kind)
     }
 
     static func loadEvents() throws -> [GateEvent] {
@@ -112,6 +114,8 @@ enum GateFiles {
             result = log.events
             return try JSONEncoder().encode(log)
         }
+        // ホーム画面のウィジェット（踏みとどまった回数など）を新しい記録で描き直す。
+        WidgetCenter.shared.reloadTimelines(ofKind: WidgetOptions.kind)
         return result
     }
 

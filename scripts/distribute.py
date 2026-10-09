@@ -16,16 +16,21 @@ BUNDLES = {"Rhythm.app/Extensions/RhythmScreenTime.appex": "com.kawakahi.rhythm.
            "Rhythm.app/PlugIns/RhythmMonitor.appex": "com.kawakahi.rhythm.Monitor",
            "Rhythm.app/PlugIns/RhythmShieldConfiguration.appex": "com.kawakahi.rhythm.ShieldConfiguration",
            "Rhythm.app/PlugIns/RhythmShieldAction.appex": "com.kawakahi.rhythm.ShieldAction",
+           "Rhythm.app/PlugIns/RhythmWidget.appex": "com.kawakahi.rhythm.Widget",
            "Rhythm.app": "com.kawakahi.rhythm"}
 ENTITLEMENT_SOURCES = {"com.kawakahi.rhythm": "Rhythm/Rhythm.entitlements",
                        "com.kawakahi.rhythm.ScreenTimeReport": "ScreenTimeReport/ScreenTimeReport.entitlements",
                        "com.kawakahi.rhythm.Monitor": "Monitor/Monitor.entitlements",
                        "com.kawakahi.rhythm.ShieldConfiguration": "ShieldConfiguration/ShieldConfiguration.entitlements",
-                       "com.kawakahi.rhythm.ShieldAction": "ShieldAction/ShieldAction.entitlements"}
+                       "com.kawakahi.rhythm.ShieldAction": "ShieldAction/ShieldAction.entitlements",
+                       "com.kawakahi.rhythm.Widget": "Widget/Widget.entitlements"}
 # Legacy NSExtension points used by the gate extensions (the report extension uses ExtensionKit instead).
 EXTENSION_POINTS = {"com.kawakahi.rhythm.Monitor": "com.apple.deviceactivity.monitor-extension",
                     "com.kawakahi.rhythm.ShieldConfiguration": "com.apple.ManagedSettingsUI.shield-configuration-service",
-                    "com.kawakahi.rhythm.ShieldAction": "com.apple.ManagedSettings.shield-action-service"}
+                    "com.kawakahi.rhythm.ShieldAction": "com.apple.ManagedSettings.shield-action-service",
+                    "com.kawakahi.rhythm.Widget": "com.apple.widgetkit-extension"}
+# The home-screen widget reads only the gate log; it does not use Screen Time APIs.
+NO_FAMILY_CONTROLS = {"com.kawakahi.rhythm.Widget"}
 APP_GROUP = "group.com.kawakahi.rhythm"
 # The report extension reads the app classification (SNS・動画・仕事) from the App Group.
 APP_GROUP_BUNDLES = {"com.kawakahi.rhythm", "com.kawakahi.rhythm.ScreenTimeReport", *EXTENSION_POINTS}
@@ -74,7 +79,8 @@ def check_distribution(info, signed, profile, bundle, team, build, now):
         require(ent.get("application-identifier") == f"{team}.{bundle}", "Application identifier mismatch")
         require(ent.get("com.apple.developer.team-identifier") == team, "Signing team mismatch")
         require(ent.get("get-task-allow") is not True, "Debugging entitlement present")
-        require(ent.get("com.apple.developer.family-controls") is True, "Family Controls missing")
+        if bundle not in NO_FAMILY_CONTROLS:
+            require(ent.get("com.apple.developer.family-controls") is True, "Family Controls missing")
         if bundle in APP_GROUP_BUNDLES:
             require(APP_GROUP in ent.get("com.apple.security.application-groups", []), "App Group missing")
     if bundle == "com.kawakahi.rhythm":

@@ -248,3 +248,49 @@ enum GateMath {
         }
     }
 }
+
+// MARK: ホーム画面ウィジェット（P3）
+
+/// ウィジェットに出す項目。App Groupに置き、本体が書いてウィジェットが読む。
+/// SNSの分数はAppleの仕組みで出せないため、ゲートの記録から作れる項目だけ。
+struct WidgetOptions: Codable, Equatable, Sendable {
+    static let kind = "RhythmGate"
+    static let appGroup = "group.com.kawakahi.rhythm"
+
+    var showsStayedAway = true
+    var showsAttempts = true
+    var showsBudget = true
+
+    private static func url() -> URL? {
+        FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup)?
+            .appendingPathComponent("Widget", isDirectory: true).appendingPathComponent("options.json")
+    }
+
+    static func load() -> WidgetOptions {
+        guard let url = url(), let data = try? Data(contentsOf: url),
+              let options = try? JSONDecoder().decode(WidgetOptions.self, from: data) else { return WidgetOptions() }
+        return options
+    }
+
+    func save() throws {
+        guard let url = Self.url() else { throw CocoaError(.fileNoSuchFile) }
+        try FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true,
+            attributes: [.protectionKey: FileProtectionType.completeUntilFirstUserAuthentication])
+        try JSONEncoder().encode(self).write(to: url, options: [.atomic, .completeFileProtectionUntilFirstUserAuthentication])
+    }
+}
+
+/// ウィジェットの1日分の値。
+struct GateDaySnapshot: Equatable, Sendable {
+    var attempts: Int
+    var stayedAway: Int
+    var budgetUsed: Int
+    var budget: Int
+    var budgetLeft: Int { max(0, budget - budgetUsed) }
+
+    static func make(_ day: Date, _ events: [GateEvent], settings: GateSettings, calendar: Calendar = .current) -> GateDaySnapshot {
+        let counts = GateMath.todayCounts(day, events, calendar: calendar)
+        return GateDaySnapshot(attempts: counts.opened + counts.stayedAway, stayedAway: counts.stayedAway,
+            budgetUsed: GateMath.budgetUsed(on: day, events, calendar: calendar), budget: settings.dailyPlayBudget)
+    }
+}

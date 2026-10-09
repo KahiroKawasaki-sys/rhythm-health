@@ -1,5 +1,6 @@
 import SwiftUI
 import FamilyControls
+import WidgetKit
 
 struct SettingsView: View {
     @EnvironmentObject private var journal: JournalStore
@@ -15,6 +16,7 @@ struct SettingsView: View {
     @State private var picking = false
     @State private var draft = FamilyActivitySelection()
     @State private var selectionMessage: String?
+    @State private var widgetOptions = WidgetOptions.load()
     var body: some View {
         Form {
             Section("自動連携") {
@@ -72,6 +74,17 @@ struct SettingsView: View {
                 Text("SNSの目標は、今日の画面の「目標以下の連続日数」に使います。")
             }
             GateSettingsSection()
+            Section {
+                Toggle("踏みとどまった回数", isOn: $widgetOptions.showsStayedAway)
+                Toggle("開こうとした回数", isOn: $widgetOptions.showsAttempts)
+                Toggle("遊び予算の残り", isOn: $widgetOptions.showsBudget)
+            } header: { Text("ホーム画面ウィジェット（中）") } footer: {
+                Text("小さいウィジェットは遊び予算の残りと踏みとどまった回数を出します。SNSの分数はAppleの仕組みでウィジェットに出せません。ホーム画面を長押しして「Rhythm」のウィジェットを追加してください。")
+            }
+            .onChange(of: widgetOptions) { _, next in
+                do { try next.save(); WidgetCenter.shared.reloadTimelines(ofKind: WidgetOptions.kind) }
+                catch { gate.message = "ウィジェットの設定を保存できませんでした。\(error.localizedDescription)" }
+            }
             Section {
                 Stepper("睡眠 \(HealthMath.duration(sleepGoal))", value: $sleepGoal, in: 60...960, step: 15)
                 Stepper("スマホ \(HealthMath.duration(screenGoal))", value: $screenGoal, in: 0...1440, step: 15)

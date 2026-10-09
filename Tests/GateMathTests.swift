@@ -139,4 +139,12 @@ final class GateMathTests: XCTestCase {
         XCTAssertEqual(settings.strongHoursText, "4〜6時・21〜24時")
         XCTAssertFalse(GateSettings(strongHours: [24]).isValid)
     }
+
+    func testWidgetSnapshotCountsTodayOnly() {
+        let events = [opened("2026-10-07T10:00:00", .play, 10), GateEvent(date: date("2026-10-07T11:00:00"), kind: .stayedAway),
+                      opened("2026-10-06T10:00:00", .play, 10)]
+        let snapshot = GateDaySnapshot.make(date("2026-10-07T12:00:00"), events, settings: GateSettings(), calendar: calendar)
+        XCTAssertEqual(snapshot.attempts, 2); XCTAssertEqual(snapshot.stayedAway, 1)
+        XCTAssertEqual(snapshot.budgetUsed, 10); XCTAssertEqual(snapshot.budgetLeft, 20)
+    }
 }
