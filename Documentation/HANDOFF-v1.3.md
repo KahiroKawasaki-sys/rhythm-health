@@ -39,3 +39,12 @@ Appleはロック解除回数を渡さない。表示拡張の `DeviceActivityDa
 - フェーズ1：C（ゲートの状態チェックと導線。原因特定が先）＋Aの不具合修正（最初のSNS）
 - フェーズ2：A（カード再構成）＋B（持ち上げ）
 - 各フェーズ：テスト追加 → `gh workflow run verify-ios.yml --ref <branch>` → main統合 → TestFlightアップロード → `gh workflow run build-status.yml --ref main -f assign_latest=true` で本人用グループに追加。
+
+## 進捗
+### フェーズ1（2026-10-12 実装・ブランチ `v1.3-phase1`）
+- C-1 状態チェック：設定「開く前に、ひと呼吸」の先頭に「ゲートの状態チェック」（`GateStatusView`）。オン／オフ、スクリーンタイム・通知の許可、設定上の対象数と `ManagedSettingsStore` を読み返した実際の遮断数（`GateShield.applied()`）、解除中、監視中（到達ライン／解除の終わり）、最後に押したシールドのボタン、「遮断をかけ直す」（解除中なら解除を終える）。下に確認の順番
+- C-2 オフの見落とし防止：今日の「SNSゲート」カードがオフの時は「オフです」＋「設定でオンにする」（設定タブへ）
+- C-3 オン直後の検証：`enable`／`selectionChanged` の後に遮断を読み返し、空なら「遮断をかけられませんでした」（文書では条件付きだったが小さいので同時に入れた）
+- C-4 通知に頼らない導線：シールドのボタンが `Gate/shield.json`（設定と同じ保護）に時刻を残す。「理由を選んで開く」から5分以内にRhythmを開くと目的選択を自動で出す（`GateMath.shouldPresentAfterShield`）。シールドの副題に「通知が来ないときは、Rhythmを開いてください」。ウィジェットのタップで `rhythm://gate`
+- A 不具合：最初のSNSは4時以降で数え（`HealthMath.dayStartHour`）、いつもの値は過去日の中央値（`medianHour`、偶数個は小さい側）。カードは「いつも ◯時台」。「数字の見方」も更新
+- テスト：最初のSNS（夜ふかし除外）・中央値・シールド押下の5分判定・記録の読み書き
