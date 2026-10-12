@@ -1,5 +1,8 @@
 import SwiftUI
 import LocalAuthentication
+import FamilyControls
+import DeviceActivity
+import UserNotifications
 
 // MARK: 目的選択（通知のタップ・rhythm://gate から開く）
 
@@ -224,6 +227,7 @@ struct GateSettingsSection: View {
 
     var body: some View {
         Section {
+            NavigationLink { GateStatusView() } label: { Label("ゲートの状態チェック", systemImage: "stethoscope") }
             if gate.isEnabled {
                 Label("オン：選んだアプリとWebサイトを開くと、ひと呼吸の画面が出ます", systemImage: "leaf")
                     .foregroundStyle(Palette.green)
@@ -254,7 +258,7 @@ struct GateSettingsSection: View {
             if let message = gate.message { Text(message).font(.caption) }
             if let authMessage { Text(authMessage).font(.caption).foregroundStyle(.red) }
         } header: { Text("開く前に、ひと呼吸") } footer: {
-            Text("シールドの「理由を選んで開く」は通知でRhythmを開きます。通知を許可してください。待機は同じ日の遊び・なんとなくの回数に応じて5秒ずつ延び（最大60秒）、ゲートを強める時間帯は2倍です。記録はこのiPhoneの中にだけ保存し、外部へは送りません。")
+            Text("シールドの「理由を選んで開く」は通知でRhythmを開きます。通知が来ないときも、5分以内にRhythmを開けば目的選択が出ます。ホーム画面のウィジェットをタップしても開けます。待機は同じ日の遊び・なんとなくの回数に応じて5秒ずつ延び（最大60秒）、ゲートを強める時間帯は2倍です。記録はこのiPhoneの中にだけ保存し、外部へは送りません。")
         }
         .onAppear { draft = gate.settings }
         .onChange(of: draft) { _, _ in saved = false }
@@ -291,6 +295,117 @@ struct GateSettingsSection: View {
             authMessage = nil
             disableCountdown = GateMath.disableWaitSeconds
         } catch { authMessage = "認証できなかったため、オンのままにしました。" }
+    }
+}
+
+// MARK: ゲートの状態チェック
+
+/// どこで止まっているかを画面で確かめる。オン・許可・設定上の対象・実際の遮断・監視・シールドのボタン。
+struct GateStatusView: View {
+    @EnvironmentObject private var gate: GateStore
+    @State private var status: Snapshot?
+
+    struct Snapshot {
+        var screenTime: FamilyControls.AuthorizationStatus
+        var notification: UNAuthorizationStatus
+        var configured: GateShieldCounts
+        var applied: GateShieldCounts
+        var monitors: [DeviceActivityName]
+        var press: ShieldPress
+    }
+
+    var body: some View {
+        Form {
+            if let status {
+                let enabled = gate.isEnabled
+                let unlocked = gate.unlockedUntil
+                Section {
+                    row("ひと呼吸の仕組み", enabled ? "オン" : "オフ", ok: enabled)
+                    row("スクリーンタイムの許可", screenTimeText(status.screenTime), ok: status.screenTime == .approved)
+                    row("通知の許可", notificationText(status.notification),
+                        ok: status.notification == .authorized || status.notification == .provisional)
+                } header: { Text("オン・許可") }
+                Section {
+                    row("設定上の対象", status.configured.text, ok: !status.configured.isEmpty)
+                    row("実際の遮断", status.applied.text,
+                        ok: enabled && unlocked == nil ? !status.applied.isEmpty : status.applied.isEmpty)
+                    if let unlocked {
+                        LabeledContent("解除中", value: "\(unlocked.formatted(date: .omitted, time: .shortened))まで")
+                    }
+                    LabeledContent("監視中", value: status.monitors.isEmpty ? "なし" : status.monitors.map(monitorName).joined(separator: "・"))
+                } header: { Text("遮断") } footer: {
+                    Text("オンで解除中でなければ、実際の遮断が0でないこと。オンの間は「到達ライン」の監視が動いています。")
+                }
+                Section {
+                    LabeledContent("最後に押したボタン", value: pressText(status.press))
+                } header: { Text("シールド") }
+                Section {
+                    Button("遮断をかけ直す") { gate.reapplyShield(); reload() }.disabled(!enabled)
+                    if let message = gate.message { Text(message).font(.caption) }
+                } footer: {
+                    Text("確かめる順番：①オンか・対象が0でないか・許可が「承認」か ②X・Instagramを開いてシールドが出るか ③「理由を選んで開く」→通知→目的選択。通知が来ないときは、5分以内にRhythmを開くと目的選択が出ます。")
+                }
+            } else {
+                ProgressView()
+            }
+        }
+        .navigationTitle("ゲートの状態チェック").navigationBarTitleDisplayMode(.inline)
+        .task { reload() }
+        .refreshable { reload() }
+    }
+
+    @MainActor private func reload() {
+        let selection = gate.config.selection
+        Task {
+            let notification = await UNUserNotificationCenter.current().notificationSettings().authorizationStatus
+            status = Snapshot(screenTime: AuthorizationCenter.shared.authorizationStatus, notification: notification,
+                configured: GateShieldCounts(applications: selection.applicationTokens.count,
+                    webDomains: selection.webDomainTokens.count, categories: selection.categoryTokens.count),
+                applied: GateShield.applied(), monitors: DeviceActivityCenter().activities,
+                press: GateFiles.loadShieldPress())
+        }
+    }
+
+    private func row(_ title: String, _ value: String, ok: Bool) -> some View {
+        HStack {
+            Image(systemName: ok ? "checkmark.circle.fill" : "exclamationmark.triangle.fill")
+                .foregroundStyle(ok ? Palette.green : Palette.vermilion)
+            LabeledContent(title, value: value)
+        }.accessibilityElement(children: .combine)
+    }
+
+    private func screenTimeText(_ status: FamilyControls.AuthorizationStatus) -> String {
+        switch status {
+        case .approved: return "承認"
+        case .denied: return "拒否"
+        case .notDetermined: return "未確認"
+        @unknown default: return "不明"
+        }
+    }
+
+    private func notificationText(_ status: UNAuthorizationStatus) -> String {
+        switch status {
+        case .authorized: return "承認"
+        case .provisional: return "仮承認"
+        case .ephemeral: return "一時的"
+        case .denied: return "拒否"
+        case .notDetermined: return "未確認"
+        @unknown default: return "不明"
+        }
+    }
+
+    private func monitorName(_ name: DeviceActivityName) -> String {
+        switch name {
+        case .rhythmDaily: return "到達ライン"
+        case .rhythmUnlock: return "解除の終わり"
+        default: return name.rawValue
+        }
+    }
+
+    private func pressText(_ press: ShieldPress) -> String {
+        guard let date = press.lastDate, let button = press.lastButton else { return "まだありません" }
+        let label = button == .choose ? "理由を選んで開く" : "やめておく"
+        return "\(date.formatted(.dateTime.month().day().hour().minute())) \(label)"
     }
 }
 

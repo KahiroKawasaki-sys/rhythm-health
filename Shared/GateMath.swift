@@ -249,6 +249,37 @@ enum GateMath {
     }
 }
 
+// MARK: シールドのボタンの記録
+
+/// シールドのボタンを押した時刻。App Groupの `Gate/` に設定と同じ保護で置く。
+/// 拡張からの通知が届かなくても、押してすぐRhythmを開けば目的選択へ進めるようにする。
+struct ShieldPress: Codable, Equatable, Sendable {
+    enum Button: String, Codable, Sendable { case stayAway, choose }
+    var version = 1
+    var lastDate: Date?
+    var lastButton: Button?
+    /// 「理由を選んで開く」を押して、まだRhythmで目的選択を出していない時刻。
+    var pendingChoose: Date?
+
+    mutating func record(_ button: Button, at date: Date) {
+        lastDate = date
+        lastButton = button
+        pendingChoose = button == .choose ? date : nil
+    }
+}
+
+extension GateMath {
+    /// 「理由を選んで開く」からこの秒数以内にRhythmを開いたら、目的選択を自動で出す。
+    static let shieldHandoffSeconds: TimeInterval = 5 * 60
+
+    static func shouldPresentAfterShield(_ press: ShieldPress, now: Date) -> Bool {
+        guard let pressed = press.pendingChoose else { return false }
+        let age = now.timeIntervalSince(pressed)
+        // 時計のずれで少し未来になった記録も受け付ける。
+        return age >= -60 && age <= shieldHandoffSeconds
+    }
+}
+
 // MARK: ホーム画面ウィジェット（P3）
 
 /// ウィジェットに出す項目。App Groupに置き、本体が書いてウィジェットが読む。
@@ -256,6 +287,8 @@ enum GateMath {
 struct WidgetOptions: Codable, Equatable, Sendable {
     static let kind = "RhythmGate"
     static let appGroup = "group.com.kawakahi.rhythm"
+    /// ウィジェットのタップで目的選択を開く（本体の `GateShared.gateURL` と同じ）。
+    static let gateURL = URL(string: "rhythm://gate")!
 
     var showsStayedAway = true
     var showsAttempts = true

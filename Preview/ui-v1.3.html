@@ -1,0 +1,314 @@
+<title>Rhythm v1.3 改善案</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap">
+<style>
+/* Layout: 読み物の列（最大960px）の中に、アプリの画面モックを横並び→スマホ幅では縦積み */
+:root{
+  --bg:#F5F6F2; --paper:#FFFFFF; --ink:#1A2923; --muted:#59665E; --line:#DDE2DA;
+  --green:#115A36; --green-soft:#E3EEE7; --verm:#CF4F25; --verm-soft:#FBE7DF; --warn:#9A6A00; --warn-soft:#FBF1D6;
+  /* アプリ画面は実機どおりライト固定 */
+  --app-bg:#F5F6F2; --app-card:#FFFFFF; --app-ink:#1A2923; --app-muted:#59665E; --app-track:#ECEEE9; --app-ghost:#C9CFC6;
+  --app-green:#115A36; --app-verm:#CF4F25; --app-video:#7A62B8; --app-work:#2F6E9E;
+  --font-body:"Noto Sans JP",-apple-system,"Hiragino Sans","Yu Gothic UI",sans-serif;
+  --font-app:-apple-system,"SF Pro Text","Hiragino Sans","Noto Sans JP",sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#121815; --paper:#1B231F; --ink:#E6ECE7; --muted:#A3B0A8; --line:#2D3832;
+  --green:#7CC59A; --green-soft:#1F3328; --verm:#F08A66; --verm-soft:#3A241C; --warn:#E8C05A; --warn-soft:#352C14; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#121815; --paper:#1B231F; --ink:#E6ECE7; --muted:#A3B0A8; --line:#2D3832;
+  --green:#7CC59A; --green-soft:#1F3328; --verm:#F08A66; --verm-soft:#3A241C; --warn:#E8C05A; --warn-soft:#352C14; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--font-body);line-height:1.75;font-size:15px}
+.wrap{max-width:960px;margin:0 auto;padding-inline:16px;padding-block:32px 64px;display:flex;flex-direction:column;gap:56px}
+h1,h2,h3{text-wrap:balance;line-height:1.35;margin:0}
+h1{font-size:28px;font-weight:700}
+h2{font-size:21px;font-weight:700}
+h3{font-size:16px;font-weight:700}
+p{margin:0;max-width:65ch}
+.lead{color:var(--muted)}
+section{display:flex;flex-direction:column;gap:18px}
+.eyebrow{font-size:12px;letter-spacing:.08em;color:var(--green);font-weight:700}
+ul.plain{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:68ch}
+.screens{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:20px;align-items:start}
+.shot{display:flex;flex-direction:column;gap:10px;min-width:0}
+.shot-label{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700}
+.pill{font-size:11px;font-weight:700;padding:2px 9px;border-radius:999px;background:var(--green-soft);color:var(--green)}
+.pill.gray{background:var(--line);color:var(--muted)}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.bad{background:var(--verm-soft);color:var(--verm)}
+.note{font-size:13px;color:var(--muted)}
+.box{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+
+/* ---- アプリ画面モック ---- */
+.screen{background:var(--app-bg);border-radius:28px;padding:14px;font-family:var(--font-app);color:var(--app-ink);box-shadow:0 1px 0 var(--line),0 10px 30px rgba(0,0,0,.08)}
+.card{background:var(--app-card);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:14px;line-height:1.35}
+.card-h{display:flex;justify-content:space-between;align-items:baseline}
+.card-h b{font-size:16px}
+.card-h span{font-size:11px;color:var(--app-muted)}
+.cap{font-size:11px;color:var(--app-muted)}
+.big{font-size:38px;font-weight:600;letter-spacing:-.01em;font-variant-numeric:tabular-nums}
+.big small{font-size:15px;font-weight:500;color:var(--app-muted);margin-left:4px}
+.status{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:999px;background:#E3EEE7;color:var(--app-green)}
+.row{display:flex;justify-content:space-between;align-items:flex-end;gap:8px}
+.link{display:flex;justify-content:space-between;font-size:14px;color:var(--app-green);padding-top:2px}
+.dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+
+/* ゲージ（目標までの道のり） */
+.gauge{position:relative;height:14px;border-radius:7px;background:var(--app-track)}
+.gauge .fill{position:absolute;inset:0 auto 0 0;border-radius:7px;background:var(--app-green)}
+.gauge .mark{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--app-ink);border-radius:1px}
+.gauge-labels{position:relative;height:16px;font-size:10.5px;color:var(--app-muted);font-variant-numeric:tabular-nums}
+.gauge-labels span{position:absolute;top:0;white-space:nowrap}
+
+/* 時間帯の棒（今日＝塗り、いつも＝薄い棒） */
+.hours{display:grid;grid-template-columns:repeat(18,1fr);gap:3px;align-items:end;height:52px}
+.hours i{position:relative;display:block;height:100%}
+.hours i::before{content:"";position:absolute;left:0;right:0;bottom:0;height:var(--a);background:var(--app-ghost);opacity:.55;border-radius:2px}
+.hours i::after{content:"";position:absolute;left:18%;right:18%;bottom:0;height:var(--t,0);background:var(--c,var(--app-green));border-radius:2px}
+.hours i.now::after{outline:2px solid #fff}
+.hours-axis{display:grid;grid-template-columns:repeat(18,1fr);font-size:9.5px;color:var(--app-muted);font-variant-numeric:tabular-nums}
+.hours-axis span{grid-column:span 3}
+
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;border-top:1px solid var(--app-track);padding-top:12px}
+.stats div{display:flex;flex-direction:column;gap:2px;min-width:0}
+.stats b{font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.down{font-size:11px;color:var(--app-green);font-weight:600}
+.up{font-size:11px;color:var(--app-verm);font-weight:600}
+
+/* 現在の画面（問題点の番号つき） */
+.cur .bar2{height:8px;border-radius:4px;background:var(--app-track);position:relative}
+.cur .bar2 i{position:absolute;inset:0 auto 0 0;border-radius:4px}
+.num{display:inline-grid;place-items:center;width:18px;height:18px;border-radius:50%;background:var(--warn);color:#fff;font-size:11px;font-weight:700;font-family:var(--font-body);flex:none}
+.cur .num{position:absolute;right:-6px;top:-6px}
+.rel{position:relative}
+
+/* 一覧（持ち上げ後に最初に開いたアプリ） */
+.rank{display:flex;flex-direction:column;gap:7px}
+.rank div{display:grid;grid-template-columns:76px 1fr 34px;gap:8px;align-items:center;font-size:12px}
+.rank em{font-style:normal;height:8px;border-radius:4px;background:var(--app-ghost);display:block}
+.rank em.sns{background:var(--app-verm)}
+.rank span:last-child{text-align:right;font-variant-numeric:tabular-nums}
+.hint{background:#F1F5EF;border-radius:12px;padding:10px 12px;font-size:12px;line-height:1.55;color:var(--app-ink)}
+
+/* ゲートの流れ */
+.flow{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.step{background:var(--paper);border:1px solid var(--line);border-radius:14px;padding:14px 16px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.step .k{font-size:12px;color:var(--muted)}
+.step.risk{border-color:var(--warn);background:var(--warn-soft)}
+table{border-collapse:collapse;width:100%;font-size:14px}
+th,td{text-align:left;padding:10px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:12px;color:var(--muted);font-weight:500}
+.tbl{overflow-x:auto;background:var(--paper);border:1px solid var(--line);border-radius:14px}
+.q{display:flex;flex-direction:column;gap:6px;margin:0;padding-left:1.4em}
+</style>
+
+<div class="wrap">
+<header style="display:flex;flex-direction:column;gap:10px">
+  <div class="eyebrow">RHYTHM · 2026-10-12 提案</div>
+  <h1>スクリーンタイムの見せ方・持ち上げ回数・SNSゲート</h1>
+  <p class="lead">今日の画面のスクリーンタイムカードを「目標までの道のり」1本に絞る案と、iPhoneを持ち上げた回数の記録、動いていないSNSゲートの調べた結果をまとめました。数字は10/12 13:32の画面の値で、持ち上げ回数は例です。</p>
+</header>
+
+<!-- ============ 1 ============ -->
+<section>
+  <div class="eyebrow">1 · スクリーンタイムカード</div>
+  <h2>主役をSNS1つにして、「いつものこの時刻」と「目標」を1本の線で見せる</h2>
+  <p>今のカードは数字が12個並び、同じことを2回言っている所があります。問題は4つです。</p>
+  <ul class="plain">
+    <li><b>大きな数字が2つ</b>（SNS 22分と合計1時間47分）あり、どちらを見ればいいか迷う。</li>
+    <li><b>平均との比較が2回</b>出ている（「↓6分 平均より少ない」と、今日／平均の横棒）。</li>
+    <li><b>0分の区分も凡例に並ぶ</b>（動画0分・仕事0分）。内訳は詳細画面で足りる。</li>
+    <li><b>説明文が長い</b>（「平均＝過去7日のうち…」）。毎日読む文ではない。</li>
+  </ul>
+
+  <div class="screens">
+    <!-- 現在 -->
+    <div class="shot">
+      <div class="shot-label">現在 <span class="pill gray">1.14.1</span></div>
+      <div class="screen cur"><div class="card">
+        <div class="card-h"><b>スクリーンタイム</b><span>今日ここまで</span></div>
+        <div class="row rel">
+          <div><div class="cap"><span class="dot" style="background:var(--app-verm)"></span>SNS</div><div class="big" style="font-size:30px">22分</div><div class="down">↓ 6分 平均より少ない</div></div>
+          <div style="text-align:right"><div class="cap">合計</div><div style="font-size:22px;font-weight:600">1時間47分</div><div class="down">↓ 12分 平均より少ない</div></div>
+          <span class="num">1</span>
+        </div>
+        <div class="rel">
+          <div class="bar2"><i style="width:21%;background:var(--app-verm)"></i></div>
+          <div class="cap" style="margin-top:6px">● SNS 22分　● 動画 0分　● 仕事 0分　● その他 1時間25分</div>
+          <span class="num">3</span>
+        </div>
+        <div class="rel" style="display:flex;flex-direction:column;gap:5px">
+          <div class="cap">今日 <span style="display:inline-block;width:62%;height:6px;background:var(--app-verm);border-radius:3px;vertical-align:1px"></span> 22分</div>
+          <div class="cap">平均 <span style="display:inline-block;width:80%;height:6px;background:var(--app-ghost);border-radius:3px;vertical-align:1px"></span> 29分</div>
+          <span class="num">2</span>
+        </div>
+        <div class="cap rel">平均＝過去7日のうち記録のある7日の、同じ時刻（13:32）までのSNS<span class="num">4</span></div>
+        <div class="stats" style="grid-template-columns:1fr 1fr"><div><span class="cap">最初のSNS</span><b>7時台</b><span class="cap">平均 3.6時</span></div><div><span class="cap">目標45分以下</span><b>0日連続</b><span class="cap">昨日まで（最大30日）</span></div></div>
+      </div></div>
+    </div>
+
+    <!-- 案A -->
+    <div class="shot">
+      <div class="shot-label">案A　目標までの道のり <span class="pill">おすすめ</span></div>
+      <div class="screen"><div class="card">
+        <div class="card-h"><b>スクリーンタイム</b><span>13:32 時点</span></div>
+        <div class="row">
+          <div><div class="cap"><span class="dot" style="background:var(--app-verm)"></span>今日のSNS</div><div class="big">22分<small>/ 目標45分</small></div></div>
+          <span class="status">いつもより 6分少ない</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div class="gauge"><div class="fill" style="width:48.9%"></div><div class="mark" style="left:64.4%"></div></div>
+          <div class="gauge-labels"><span style="left:0">0</span><span style="left:64.4%;transform:translateX(-50%);color:var(--app-ink)">いつもの13:32 ＝ 29分</span><span style="right:0">45分</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="cap">時間帯別のSNS　<span style="color:var(--app-ink)">■</span> 今日　<span style="color:var(--app-ghost)">■</span> いつも</div>
+          <div class="hours">
+            <i style="--a:12%"></i><i style="--a:62%;--t:75%"></i><i style="--a:38%;--t:25%"></i><i style="--a:25%"></i><i style="--a:25%;--t:25%"></i><i style="--a:38%;--t:38%"></i><i style="--a:75%;--t:62%"></i><i class="now" style="--a:50%;--t:50%"></i><i style="--a:38%"></i><i style="--a:38%"></i><i style="--a:25%"></i><i style="--a:38%"></i><i style="--a:38%"></i><i style="--a:50%"></i><i style="--a:62%"></i><i style="--a:75%"></i><i style="--a:88%"></i><i style="--a:62%"></i>
+          </div>
+          <div class="hours-axis"><span>6時</span><span>9時</span><span>12時</span><span>15時</span><span>18時</span><span>21時</span></div>
+        </div>
+        <div class="stats">
+          <div><span class="cap">合計</span><b>1時間47分</b><span class="down">↓ 12分</span></div>
+          <div><span class="cap">持ち上げ</span><b>34回</b><span class="down">↓ 5回</span></div>
+          <div><span class="cap">最初のSNS</span><b>7時台</b><span class="cap">いつも 7時台</span></div>
+        </div>
+        <div class="link"><span>アプリ別・持ち上げ・時間帯を見る</span><span>›</span></div>
+      </div></div>
+    </div>
+
+    <!-- 案B -->
+    <div class="shot">
+      <div class="shot-label">案B　積み上がりの線 <span class="pill gray">別案</span></div>
+      <div class="screen"><div class="card">
+        <div class="card-h"><b>スクリーンタイム</b><span>13:32 時点</span></div>
+        <div class="row">
+          <div><div class="cap"><span class="dot" style="background:var(--app-verm)"></span>今日のSNS</div><div class="big">22分<small>/ 目標45分</small></div></div>
+          <span class="status">いつもより 6分少ない</span>
+        </div>
+        <svg viewBox="0 0 300 128" role="img" aria-label="SNSの積み上がり。今日は13時32分で22分、いつもの同じ時刻は29分、1日の終わりのいつもは58分" style="width:100%;height:auto;display:block">
+          <line x1="10" y1="35" x2="290" y2="35" stroke="#CF4F25" stroke-width="1" stroke-dasharray="2 3"/>
+          <text x="288" y="30" text-anchor="end" font-size="9" fill="#CF4F25">目標 45分</text>
+          <line x1="10" y1="110" x2="290" y2="110" stroke="#ECEEE9" stroke-width="1"/>
+          <path d="M10 110 L91.7 110 L103.3 103.3 L126.7 95 L150 76.7 L167.5 61.7 L220 46.7 L255 31.7 L278.3 16.7 L290 13.3" fill="none" stroke="#9AA39C" stroke-width="1.5" stroke-dasharray="4 3"/>
+          <path d="M10 110 L91.7 110 L103.3 100 L126.7 93.3 L150 81.7 L167.5 73.3 L167.5 110 Z" fill="#115A36" fill-opacity=".12"/>
+          <path d="M10 110 L91.7 110 L103.3 100 L126.7 93.3 L150 81.7 L167.5 73.3" fill="none" stroke="#115A36" stroke-width="2.5" stroke-linejoin="round"/>
+          <circle cx="167.5" cy="73.3" r="4" fill="#115A36" stroke="#fff" stroke-width="1.5"/>
+          <text x="174" y="78" font-size="9.5" fill="#115A36" font-weight="600">今日 22分</text>
+          <text x="174" y="58" font-size="9" fill="#59665E">いつも 29分</text>
+          <text x="248" y="12" font-size="9" fill="#59665E">いつも 58分</text>
+          <text x="10" y="124" font-size="9" fill="#59665E">0時</text><text x="150" y="124" font-size="9" fill="#59665E" text-anchor="middle">12時</text><text x="290" y="124" font-size="9" fill="#59665E" text-anchor="end">24時</text>
+        </svg>
+        <div class="stats">
+          <div><span class="cap">合計</span><b>1時間47分</b><span class="down">↓ 12分</span></div>
+          <div><span class="cap">持ち上げ</span><b>34回</b><span class="down">↓ 5回</span></div>
+          <div><span class="cap">最初のSNS</span><b>7時台</b><span class="cap">いつも 7時台</span></div>
+        </div>
+        <div class="link"><span>アプリ別・持ち上げ・時間帯を見る</span><span>›</span></div>
+      </div></div>
+    </div>
+  </div>
+
+  <div class="box">
+    <h3>案Aをおすすめする理由</h3>
+    <ul class="plain">
+      <li>知りたいことは「今日のSNSは大丈夫か」の1つ。ゲージ1本で「目標まであと23分」「いつもの今ごろより少ない」が同時に読める。</li>
+      <li>時間帯の棒で「どの時間に使ったか」が分かり、ゲートを強める時間帯（P1）を決める材料になる。</li>
+      <li>案Bは夜までの伸び方が見えるが、朝や昼は線が短くて読みにくい。高さも案Aより要る。</li>
+      <li>ゲージの色はいつもより多い時だけ朱色。今のように「少ないのに朱色」にはしない。</li>
+    </ul>
+    <p class="note">移すもの：4区分の凡例と横棒は詳細画面へ。説明文は「数字の見方」（設定）へ。最初のSNSの「平均 3.6時」は、0時台の夜ふかし利用もその日の「最初」に数えて平均しているためと思われる。朝4時以降の最初の利用の中央値に直す。目標以下の連続日数は、1日以上続いた時だけ状態の札に出す（例：「目標以下 3日連続」）。</p>
+  </div>
+</section>
+
+<!-- ============ 2 ============ -->
+<section>
+  <div class="eyebrow">2 · 持ち上げ回数（起動回数）</div>
+  <h2>「何回手に取ったか」と「手に取ってまず何を開いたか」を記録する</h2>
+  <p>Appleはロック解除の回数そのものは渡しませんが、iPhoneの「スクリーンタイム」と同じ<b>持ち上げ回数</b>と、<b>持ち上げて最初に使ったアプリ</b>は今の仕組み（表示拡張）で読めます。追加の許可やApple側の登録は要りません。</p>
+
+  <div class="screens">
+    <div class="shot">
+      <div class="shot-label">詳細画面に「持ち上げ」を追加</div>
+      <div class="screen"><div class="card">
+        <div class="card-h"><b>持ち上げ</b><span>今日 13:32 時点</span></div>
+        <div class="row">
+          <div><div class="big">34<small>回</small></div><div class="down">↓ 5回（いつもの今ごろ 39回）</div></div>
+          <div style="text-align:right"><div class="cap">1回あたり</div><div style="font-size:20px;font-weight:600">3.1分</div></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:6px">
+          <div class="cap">時間帯別の持ち上げ</div>
+          <div class="hours">
+            <i style="--a:30%;--t:25%;--c:var(--app-work)"></i><i style="--a:62%;--t:75%;--c:var(--app-work)"></i><i style="--a:50%;--t:50%;--c:var(--app-work)"></i><i style="--a:38%;--t:38%;--c:var(--app-work)"></i><i style="--a:38%;--t:38%;--c:var(--app-work)"></i><i style="--a:50%;--t:50%;--c:var(--app-work)"></i><i style="--a:88%;--t:88%;--c:var(--app-work)"></i><i class="now" style="--a:62%;--t:62%;--c:var(--app-work)"></i><i style="--a:50%"></i><i style="--a:50%"></i><i style="--a:38%"></i><i style="--a:50%"></i><i style="--a:62%"></i><i style="--a:62%"></i><i style="--a:75%"></i><i style="--a:88%"></i><i style="--a:100%"></i><i style="--a:62%"></i>
+          </div>
+          <div class="hours-axis"><span>6時</span><span>9時</span><span>12時</span><span>15時</span><span>18時</span><span>21時</span></div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <div class="cap">持ち上げて最初に開いたアプリ</div>
+          <div class="rank">
+            <div><span>X</span><em class="sns" style="width:100%"></em><span>9回</span></div>
+            <div><span>LINE</span><em style="width:78%"></em><span>7回</span></div>
+            <div><span>Instagram</span><em class="sns" style="width:56%"></em><span>5回</span></div>
+            <div><span>Slack</span><em style="width:44%"></em><span>4回</span></div>
+            <div><span>見ただけ</span><em style="width:67%;opacity:.5"></em><span>6回</span></div>
+          </div>
+        </div>
+        <div class="hint">持ち上げの <b>41%（14回）がSNSから</b>始まっています。いちばん多いのは12時台です。</div>
+      </div></div>
+      <p class="note">数値は例です。「見ただけ」は通知を見ただけなど、アプリを開かなかった持ち上げ。</p>
+    </div>
+
+    <div class="shot" style="gap:16px">
+      <div class="box">
+        <h3>どこに出すか</h3>
+        <table>
+          <tr><th>画面</th><th>内容</th></tr>
+          <tr><td>今日のカード</td><td>下段に「持ち上げ 34回 ↓5回」（いつもの同じ時刻と比較）</td></tr>
+          <tr><td>詳細画面</td><td>時間帯別の棒、最初に開いたアプリの順位、SNS起点の割合、1回あたりの時間</td></tr>
+          <tr><td>振り返り</td><td>6つ目の指標として一覧・グラフ・カレンダーに追加（週・月・3か月・年）</td></tr>
+        </table>
+      </div>
+      <div class="box">
+        <h3>傾向と対策の考え方</h3>
+        <ul class="plain">
+          <li><b>SNS起点の持ち上げが多い時間帯</b>を示し、その時間を「ゲートを強める時間帯」に入れるよう促す。</li>
+          <li><b>回数は多いが1回が短い</b>日は「なんとなく手に取る」型。<b>回数は少ないが1回が長い</b>日は「沈み込む」型。週の振り返りでどちらだったかを1行で出す。</li>
+          <li><b>見ただけ</b>が多い場合は通知が原因。通知を減らすアプリの候補として順位を出す。</li>
+        </ul>
+      </div>
+      <div class="box">
+        <h3>制約</h3>
+        <ul class="plain">
+          <li>回数はSNSの分数と同じく表示拡張の中だけで扱うので、ウィジェットや通知には出せない。</li>
+          <li>1時間単位で正しく取れるかは実機で確認が要る（Appleの値が0のまま返る報告がある）。取れなければ1日単位の回数だけにする。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ 3 ============ -->
+<section>
+  <div class="eyebrow">3 · SNSゲート（開く前に目的を選ぶ）</div>
+  <h2>コードの流れは正しい。止まっている可能性が高いのは「通知」の段</h2>
+  <p>1.14.1のコードを、設定でオンにするところから目的を選んで開くところまで追いました。論理の誤りは見つかりませんでした。ただ、③の「シールドの拡張から通知を出す」は実機で一度も確認していない段で（v1.1の確認項目2のまま）、ここが働かないと「選ぶ画面」には行けません。</p>
+  <div class="flow">
+    <div class="step"><span class="k">① 設定</span><b>ひと呼吸をオンにする</b><span class="note">SNSを分類で選び、スクリーンタイム接続済みのときだけ押せる</span><span><span class="pill">コード確認済み</span></span></div>
+    <div class="step"><span class="k">② SNSを開く</span><b>「開く前に、ひと呼吸」の画面</b><span class="note">SNS＋動画の選択に遮断をかける</span><span><span class="pill">コード確認済み</span></span></div>
+    <div class="step risk"><span class="k">③ 理由を選んで開く</span><b>通知「開く理由を選びましょう」</b><span class="note">シールドの拡張から通知を出して閉じる。Appleが拡張からの通知を出さない場合がある</span><span><span class="pill warn">実機で未確認</span></span></div>
+    <div class="step"><span class="k">④ 通知をタップ</span><b>Rhythmで目的を選ぶ</b><span class="note">仕事・遊び・なんとなく → 深呼吸 → 決めた分だけ解除</span><span><span class="pill">コード確認済み</span></span></div>
+  </div>
+
+  <div class="box">
+    <h3>直し方の案（通知に頼らない形にする）</h3>
+    <div class="tbl" style="border:none">
+      <table>
+        <tr><th>対策</th><th>内容</th><th>Apple側の作業</th></tr>
+        <tr><td><b>Rhythmを開けば選べる</b></td><td>「理由を選んで開く」を押した時刻を共有領域に残し、5分以内にRhythmを開いたら目的選択を自動で出す。通知が来なくても、自分でRhythmを開けば続けられる</td><td>なし</td></tr>
+        <tr><td><b>シールドの文言</b></td><td>副ボタンの下に「通知が来ないときはRhythmを開いてください」と出す</td><td>なし</td></tr>
+        <tr><td><b>ウィジェットから選ぶ</b></td><td>ホーム画面のウィジェットをタップすると目的選択が開く</td><td>なし</td></tr>
+        <tr><td><b>ゲートの状態チェック</b></td><td>設定に1行：オン／オフ、スクリーンタイムの許可、通知の許可、遮断中のアプリ数、最後にシールドで押した時刻。どこで止まっているかを画面で確かめられる</td><td>なし</td></tr>
+      </table>
+    </div>
+  </div>
+</section>
+</div>

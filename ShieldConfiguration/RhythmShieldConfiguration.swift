@@ -2,7 +2,7 @@ import ManagedSettings
 import ManagedSettingsUI
 import UIKit
 
-/// シールドの見た目。「開く前に、ひと呼吸」と今日の回数を出す。
+/// シールドの見た目。「開く前に、ひと呼吸」と今日の回数、通知が来ないときの案内を出す。
 final class RhythmShieldConfiguration: ShieldConfigurationDataSource {
     override func configuration(shielding application: Application) -> ShieldConfiguration { make() }
     override func configuration(shielding application: Application, in category: ActivityCategory) -> ShieldConfiguration { make() }
@@ -14,13 +14,14 @@ final class RhythmShieldConfiguration: ShieldConfigurationDataSource {
         let ink = UIColor(red: 26/255, green: 41/255, blue: 35/255, alpha: 1)
         let secondary = UIColor(red: 89/255, green: 102/255, blue: 94/255, alpha: 1)
         let background = UIColor(red: 245/255, green: 246/255, blue: 242/255, alpha: 1)
-        let subtitle: String
+        var subtitle: String
         if let events = try? GateFiles.loadEvents() {
             let counts = GateMath.todayCounts(.now, events)
             subtitle = "今日 開いた\(counts.opened)回・やめた\(counts.stayedAway)回"
         } else {
             subtitle = "今日の回数は、Rhythmで確かめられます。"
         }
+        subtitle += "\n\n「理由を選んで開く」のあと通知が来ないときは、Rhythmを開いてください。"
         return ShieldConfiguration(backgroundBlurStyle: .systemUltraThinMaterialLight, backgroundColor: background,
             icon: UIImage(systemName: "leaf"),
             title: .init(text: "開く前に、ひと呼吸", color: ink),

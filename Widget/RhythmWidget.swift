@@ -66,6 +66,8 @@ struct GateWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: WidgetOptions.kind, provider: GateProvider()) { entry in
             GateWidgetView(entry: entry).containerBackground(Color(red: 245/255, green: 246/255, blue: 242/255), for: .widget)
+                // タップでRhythmの目的選択を開く（シールドからの通知が来ないときの入口）。
+                .widgetURL(WidgetOptions.gateURL)
         }
         .configurationDisplayName("ひと呼吸")
         .description("今日、SNSを開く前に踏みとどまった回数と、遊び予算の残り。")

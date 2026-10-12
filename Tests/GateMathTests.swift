@@ -147,4 +147,27 @@ final class GateMathTests: XCTestCase {
         XCTAssertEqual(snapshot.attempts, 2); XCTAssertEqual(snapshot.stayedAway, 1)
         XCTAssertEqual(snapshot.budgetUsed, 10); XCTAssertEqual(snapshot.budgetLeft, 20)
     }
+
+    func testShieldPressOpensGateOnlyWithinFiveMinutesOfChoose() {
+        let pressed = date("2026-10-12T21:00:00")
+        var press = ShieldPress()
+        XCTAssertFalse(GateMath.shouldPresentAfterShield(press, now: pressed))
+        press.record(.choose, at: pressed)
+        XCTAssertEqual(press.lastButton, .choose); XCTAssertEqual(press.pendingChoose, pressed)
+        XCTAssertTrue(GateMath.shouldPresentAfterShield(press, now: pressed.addingTimeInterval(299)))
+        XCTAssertTrue(GateMath.shouldPresentAfterShield(press, now: pressed.addingTimeInterval(-30)))
+        XCTAssertFalse(GateMath.shouldPresentAfterShield(press, now: pressed.addingTimeInterval(301)))
+        // 「やめておく」を後から押したら、目的選択は出さない（最後に押した時刻は残す）。
+        press.record(.stayAway, at: pressed.addingTimeInterval(10))
+        XCTAssertNil(press.pendingChoose)
+        XCTAssertEqual(press.lastDate, pressed.addingTimeInterval(10))
+        XCTAssertFalse(GateMath.shouldPresentAfterShield(press, now: pressed.addingTimeInterval(20)))
+    }
+
+    func testShieldPressFileRoundTrips() throws {
+        var press = ShieldPress()
+        press.record(.choose, at: date("2026-10-12T21:00:00"))
+        let decoded = try JSONDecoder().decode(ShieldPress.self, from: JSONEncoder().encode(press))
+        XCTAssertEqual(decoded, press)
+    }
 }

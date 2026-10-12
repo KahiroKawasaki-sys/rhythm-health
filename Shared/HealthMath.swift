@@ -332,12 +332,21 @@ extension HealthMath {
         return count
     }
 
-    /// その日の中で最初に値が出た時（0〜23時）。
+    /// 1日の始まりとみなす時。0〜3時台の利用は前の晩の夜ふかしとして「最初」に数えない。
+    static let dayStartHour = 4
+
+    /// その日の中で最初に値が出た時（4〜23時）。
     static func firstHour(_ hourly: [Date: Double], on day: Date, calendar: Calendar = .current) -> Int? {
         let start = calendar.startOfDay(for: day)
-        return (0..<24).first { hour in
+        return (dayStartHour..<24).first { hour in
             calendar.date(byAdding: .hour, value: hour, to: start).flatMap { hourly[$0] }.map { $0 > 0 } ?? false
         }
+    }
+
+    /// 「いつも ◯時台」に使う中央値。偶数個のときは小さい側を採り、実際にあった時台を返す。
+    static func medianHour(_ hours: [Int]) -> Int? {
+        guard !hours.isEmpty else { return nil }
+        return hours.sorted()[(hours.count - 1) / 2]
     }
 
     /// 1時間未満は「45分」、それ以上は「1時間05分」。

@@ -80,6 +80,7 @@ enum GateFiles {
     }
     private static func configURL() throws -> URL { try folder().appendingPathComponent("config.json") }
     private static func logURL() throws -> URL { try folder().appendingPathComponent("events.json") }
+    private static func shieldURL() throws -> URL { try folder().appendingPathComponent("shield.json") }
 
     static func loadConfig() throws -> GateConfig {
         let url = try configURL()
@@ -117,6 +118,23 @@ enum GateFiles {
         // ホーム画面のウィジェット（踏みとどまった回数など）を新しい記録で描き直す。
         WidgetCenter.shared.reloadTimelines(ofKind: WidgetOptions.kind)
         return result
+    }
+
+    /// シールドのボタンの記録。読めない・壊れているときは空として扱う（ゲートの動作には影響しない）。
+    static func loadShieldPress() -> ShieldPress {
+        guard let url = try? shieldURL(), FileManager.default.fileExists(atPath: url.path),
+              let data = try? coordinatedRead(url),
+              let press = try? JSONDecoder().decode(ShieldPress.self, from: data), press.version == 1 else { return ShieldPress() }
+        return press
+    }
+
+    /// シールド操作の拡張と本体が同時に書いても失わないよう、1回の協調操作で読み書きする。
+    static func updateShieldPress(_ change: (inout ShieldPress) -> Void) throws {
+        try coordinatedWrite(try shieldURL()) { existing in
+            var press = existing.flatMap { try? JSONDecoder().decode(ShieldPress.self, from: $0) } ?? ShieldPress()
+            change(&press)
+            return try JSONEncoder().encode(press)
+        }
     }
 
     private static func decodeLog(_ data: Data) throws -> GateLog {
@@ -161,6 +179,20 @@ enum GateShield {
         store.shield.webDomainCategories = selection.categoryTokens.isEmpty ? nil : .specific(selection.categoryTokens)
     }
 
+    /// 実際にかかっている遮断の対象数（設定ファイルではなく ManagedSettingsStore を読み返す）。
+    static func applied() -> GateShieldCounts {
+        let shield = ManagedSettingsStore(named: .rhythmGate).shield
+        var counts = GateShieldCounts(applications: shield.applications?.count ?? 0, webDomains: shield.webDomains?.count ?? 0)
+        if let policy = shield.applicationCategories {
+            switch policy {
+            case .specific(let tokens, _): counts.categories = tokens.count
+            case .all: counts.allCategories = true
+            default: break
+            }
+        }
+        return counts
+    }
+
     static func clear() {
         ManagedSettingsStore(named: .rhythmGate).clearAllSettings()
     }
@@ -175,6 +207,16 @@ enum GateShield {
         try? GateFiles.saveConfig(config)
         return true
     }
+}
+
+struct GateShieldCounts: Equatable {
+    var applications = 0
+    var webDomains = 0
+    var categories = 0
+    /// 「すべてのカテゴリ」の指定（Rhythmは使わないが、読み返した値として区別する）。
+    var allCategories = false
+    var isEmpty: Bool { applications == 0 && webDomains == 0 && categories == 0 && !allCategories }
+    var text: String { "アプリ\(applications)・カテゴリ\(allCategories ? "すべて" : "\(categories)")・サイト\(webDomains)" }
 }
 
 enum GateNotice {

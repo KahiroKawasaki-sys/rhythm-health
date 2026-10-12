@@ -33,6 +33,7 @@ import UIKit
             loadError = error.localizedDescription
         }
         if GateShield.restoreIfDue() { config.unlockedUntil = nil }
+        presentIfShieldPressed()
     }
 
     // MARK: オン・オフ
@@ -53,7 +54,8 @@ import UIKit
             GateShield.apply(selection)
             try startDailyMonitoring(selection)
             message = granted ? "ひと呼吸の仕組みをオンにしました。" :
-                "オンにしました。通知が許可されていないため、「理由を選んで開く」からRhythmを開けません。設定アプリで通知を許可してください。"
+                "オンにしました。通知が許可されていないため、「理由を選んで開く」のあとは自分でRhythmを開いてください（5分以内なら目的選択が出ます）。"
+            verifyShield()
         } catch {
             message = "オンにできませんでした。\(error.localizedDescription)"
         }
@@ -82,7 +84,10 @@ import UIKit
         do {
             try GateFiles.saveConfig(next)
             config = next
-            if unlockedUntil == nil { GateShield.apply(selection) }
+            if unlockedUntil == nil {
+                GateShield.apply(selection)
+                verifyShield()
+            }
             try startDailyMonitoring(selection)
         } catch { message = "遮断の対象を更新できませんでした。\(error.localizedDescription)" }
     }
@@ -139,6 +144,38 @@ import UIKit
         guard loadError == nil else { return }
         if let latest = try? GateFiles.loadEvents() { events = latest }
         if GateShield.restoreIfDue() { config.unlockedUntil = nil }
+        presentIfShieldPressed()
+    }
+
+    // MARK: 状態チェック
+
+    /// シールドで「理由を選んで開く」を押してから5分以内にRhythmを開いたら、通知を待たずに目的選択を出す。
+    private func presentIfShieldPressed() {
+        guard config.enabled, GateMath.shouldPresentAfterShield(GateFiles.loadShieldPress(), now: .now) else { return }
+        try? GateFiles.updateShieldPress { $0.pendingChoose = nil }
+        isGatePresented = true
+    }
+
+    /// かけたはずの遮断を読み返し、空なら知らせる。
+    private func verifyShield() {
+        if GateShield.applied().isEmpty {
+            message = "遮断をかけられませんでした。設定の「ゲートの状態チェック」で確かめてください。"
+        }
+    }
+
+    /// 状態チェック画面の「遮断をかけ直す」。解除中なら解除を終えて遮断に戻す。
+    func reapplyShield() {
+        guard config.enabled else { message = "ひと呼吸の仕組みがオフです。先にオンにしてください。"; return }
+        var next = config
+        next.unlockedUntil = nil
+        do {
+            try GateFiles.saveConfig(next)
+            config = next
+            center.stopMonitoring([.rhythmUnlock])
+            GateShield.apply(next.selection)
+            try startDailyMonitoring(next.selection)
+            message = GateShield.applied().isEmpty ? "遮断をかけられませんでした。SNSの選択と許可を確かめてください。" : "遮断をかけ直しました。"
+        } catch { message = "かけ直せませんでした。\(error.localizedDescription)" }
     }
 
     private func unlock(minutes: Int) -> Date? {

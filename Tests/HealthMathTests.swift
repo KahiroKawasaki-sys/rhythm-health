@@ -191,6 +191,20 @@ final class HealthMathTests: XCTestCase {
         XCTAssertEqual(HealthMath.firstHour(hourly, on: date("2026-10-08T00:00:00"), calendar: calendar), 9)
         XCTAssertNil(HealthMath.firstHour(hourly, on: date("2026-10-09T00:00:00"), calendar: calendar))
     }
+    func testFirstHourSkipsLateNightBeforeFour() {
+        // 0〜3時台の夜ふかしは「最初」に数えず、4時以降の最初の利用を採る。
+        let hourly = [date("2026-10-08T00:00:00"): 20.0, date("2026-10-08T03:00:00"): 5,
+                      date("2026-10-08T04:00:00"): 0, date("2026-10-08T07:00:00"): 3]
+        XCTAssertEqual(HealthMath.firstHour(hourly, on: date("2026-10-08T00:00:00"), calendar: calendar), 7)
+        XCTAssertNil(HealthMath.firstHour([date("2026-10-08T01:00:00"): 30], on: date("2026-10-08T00:00:00"), calendar: calendar))
+        XCTAssertEqual(HealthMath.firstHour([date("2026-10-08T04:00:00"): 1], on: date("2026-10-08T00:00:00"), calendar: calendar), 4)
+    }
+    func testMedianHourIgnoresOutliers() {
+        XCTAssertNil(HealthMath.medianHour([]))
+        XCTAssertEqual(HealthMath.medianHour([7, 22, 7, 8, 6]), 7)
+        // 偶数個は小さい側（実際にあった時台）
+        XCTAssertEqual(HealthMath.medianHour([9, 7, 8, 12]), 8)
+    }
     func testStreakStopsAtMissingOrOverGoalDay() {
         let today = date("2026-10-09T00:00:00")
         let daily = [date("2026-10-08T00:00:00"): 40.0, date("2026-10-07T00:00:00"): 45, date("2026-10-06T00:00:00"): 46,

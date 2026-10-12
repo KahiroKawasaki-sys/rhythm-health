@@ -147,7 +147,8 @@ struct TodayCardConfiguration {
     var averageDays = 0
     var asOf = Date.now
     var firstHour: Int?
-    var averageFirstHour: Double?
+    /// 過去の日の「最初のSNS」の中央値（4時以降で数える）。
+    var usualFirstHour: Int?
     var streak = 0
     var goal = 45
     var hasSNS = false
@@ -192,11 +193,11 @@ struct TodayCardScene: DeviceActivityReportScene {
             configuration.averageDays = recorded.count
         }
 
-        // P2：最初にSNSを使った時（1時間単位）。P4：目標以下が続いた日数（記録のある日のみ、最大30日）。
+        // P2：4時以降で最初にSNSを使った時（1時間単位）。いつもの値は外れ値に強い中央値。P4：目標以下が続いた日数（記録のある日のみ、最大30日）。
         let sns = result.values(.sns)
         configuration.firstHour = HealthMath.firstHour(sns, on: today, calendar: calendar)
         let firsts = past.compactMap { HealthMath.firstHour(sns, on: $0, calendar: calendar) }
-        configuration.averageFirstHour = firsts.isEmpty ? nil : Double(firsts.reduce(0, +)) / Double(firsts.count)
+        configuration.usualFirstHour = HealthMath.medianHour(firsts)
         configuration.streak = HealthMath.streak(result.daily(.sns, calendar: calendar), goal: Double(categories.snsGoalMinutes),
             today: today, limit: 30, calendar: calendar)
         return configuration
@@ -323,7 +324,7 @@ struct TodayCardView: View {
     private var facts: some View {
         HStack(alignment: .top, spacing: 12) {
             fact("最初のSNS", configuration.firstHour.map { "\($0)時台" } ?? "まだなし",
-                 configuration.averageFirstHour.map { String(format: "平均 %.1f時", $0) } ?? "")
+                 configuration.usualFirstHour.map { "いつも \($0)時台" } ?? "")
             fact("目標\(configuration.goal)分以下", "\(configuration.streak)日連続", "昨日まで（最大30日）",
                  color: configuration.streak > 0 ? good : nil)
         }

@@ -47,6 +47,7 @@ struct TodayView: View {
     @AppStorage(TodayKeys.compareDefault) private var compareDefault = 7
     @State private var compare: Int?
     @State private var reordering = false
+    var openSettings: () -> Void = {}
     var addEntry: () -> Void
 
     private var compareDays: Int { compare ?? compareDefault }
@@ -66,7 +67,7 @@ struct TodayView: View {
                 ForEach(visible) { card in
                     switch card {
                     case .screen: TodayScreenCard(compareDays: compareDays)
-                    case .gate: TodayGateCard(compareDays: compareDays)
+                    case .gate: TodayGateCard(compareDays: compareDays, openSettings: openSettings)
                     case .sleep: TodaySleepCard(compareDays: compareDays)
                     case .weight: TodayWeightCard(compareDays: compareDays)
                     case .steps: TodayStepsCard(compareDays: compareDays)
@@ -149,14 +150,22 @@ struct TodayScreenCard: View {
 struct TodayGateCard: View {
     @EnvironmentObject private var gate: GateStore
     var compareDays: Int
+    var openSettings: () -> Void = {}
 
     var body: some View {
         Surface {
             SectionLabel(title: "SNSゲート", detail: "開く前に目的を選ぶ")
-            if !gate.isEnabled && gate.events.isEmpty {
-                Text("設定の「開く前に、ひと呼吸」をオンにすると、ここに回数が出ます。")
-                    .font(.footnote).foregroundStyle(Palette.secondary)
-            } else {
+            if !gate.isEnabled {
+                // オフの見落とし防止：SNSは普通に開ける状態だと明示する。
+                VStack(alignment: .leading, spacing: 6) {
+                    Label("オフです", systemImage: "exclamationmark.triangle.fill")
+                        .font(.headline).foregroundStyle(Palette.vermilion)
+                    Text("いまはX・Instagramなどを、ひと呼吸なしでそのまま開けます。")
+                        .font(.footnote).foregroundStyle(Palette.secondary)
+                    Button("設定でオンにする", action: openSettings).buttonStyle(.borderedProminent)
+                }
+            }
+            if gate.isEnabled || !gate.events.isEmpty {
                 let counts = gate.todayCounts
                 let average = GateMath.dailyAverages(HealthMath.completedDays(count: compareDays), gate.events)
                 let budget = gate.settings.dailyPlayBudget

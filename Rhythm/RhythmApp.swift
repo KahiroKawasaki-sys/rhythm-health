@@ -35,16 +35,20 @@ struct DaySelection: Identifiable {
     var id: Date { date }
 }
 
+enum RootTab: Hashable { case today, review, history, settings }
+
 struct RootView: View {
     @State private var editor: DaySelection?
+    @State private var tab = RootTab.today
     var body: some View {
-        TabView {
-            NavigationStack { TodayView { editor = DaySelection(date: Calendar.current.startOfDay(for: .now)) } }
-                .tabItem { Label("今日", systemImage: "sun.max") }
-            NavigationStack { ReviewView() }.tabItem { Label("振り返り", systemImage: "chart.xyaxis.line") }
+        TabView(selection: $tab) {
+            NavigationStack {
+                TodayView(openSettings: { tab = .settings }) { editor = DaySelection(date: Calendar.current.startOfDay(for: .now)) }
+            }.tabItem { Label("今日", systemImage: "sun.max") }.tag(RootTab.today)
+            NavigationStack { ReviewView() }.tabItem { Label("振り返り", systemImage: "chart.xyaxis.line") }.tag(RootTab.review)
             NavigationStack { HistoryView { editor = DaySelection(date: $0) } }
-                .tabItem { Label("記録", systemImage: "book.closed") }
-            NavigationStack { SettingsView() }.tabItem { Label("設定", systemImage: "slider.horizontal.3") }
+                .tabItem { Label("記録", systemImage: "book.closed") }.tag(RootTab.history)
+            NavigationStack { SettingsView() }.tabItem { Label("設定", systemImage: "slider.horizontal.3") }.tag(RootTab.settings)
         }.sheet(item: $editor) { selection in
             NavigationStack { EntryView(day: selection.date) }
         }
