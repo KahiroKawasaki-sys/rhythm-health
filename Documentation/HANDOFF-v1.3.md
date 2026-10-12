@@ -41,7 +41,7 @@ Appleはロック解除回数を渡さない。表示拡張の `DeviceActivityDa
 - 各フェーズ：テスト追加 → `gh workflow run verify-ios.yml --ref <branch>` → main統合 → TestFlightアップロード → `gh workflow run build-status.yml --ref main -f assign_latest=true` で本人用グループに追加。
 
 ## 進捗
-### フェーズ1（2026-10-12 実装・ブランチ `v1.3-phase1`）
+### フェーズ1（2026-10-12 実装・CI通過・main統合・TestFlight 1.15.1を本人用グループへ追加済み）
 - C-1 状態チェック：設定「開く前に、ひと呼吸」の先頭に「ゲートの状態チェック」（`GateStatusView`）。オン／オフ、スクリーンタイム・通知の許可、設定上の対象数と `ManagedSettingsStore` を読み返した実際の遮断数（`GateShield.applied()`）、解除中、監視中（到達ライン／解除の終わり）、最後に押したシールドのボタン、「遮断をかけ直す」（解除中なら解除を終える）。下に確認の順番
 - C-2 オフの見落とし防止：今日の「SNSゲート」カードがオフの時は「オフです」＋「設定でオンにする」（設定タブへ）
 - C-3 オン直後の検証：`enable`／`selectionChanged` の後に遮断を読み返し、空なら「遮断をかけられませんでした」（文書では条件付きだったが小さいので同時に入れた）
